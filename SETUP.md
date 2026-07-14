@@ -7,10 +7,12 @@
    of `supabase/schema.sql` → Run. This creates all tables, RLS policies,
    and the triggers that auto-create a profile + personal workspace for
    every new signup.
-3. Go to **Project Settings → API**. Copy:
+3. Back in the **SQL Editor**, paste and run `supabase/schema_invoicing.sql`
+   too (adds invoices, line items, and the Wise payment-link setting).
+4. Go to **Project Settings → API**. Copy:
    - **Project URL** → this is `VITE_SUPABASE_URL`
    - **anon public key** → this is `VITE_SUPABASE_ANON_KEY`
-4. (Optional, recommended for real use) Under **Authentication → Providers →
+5. (Optional, recommended for real use) Under **Authentication → Providers →
    Email**, you can turn off "Confirm email" while testing, or leave it on
    and confirm via the email Supabase sends.
 
@@ -56,6 +58,12 @@ same two env vars, build command `npm run build`, publish directory `dist`.)
    structure without a rebuild.
 3. Create a project, add a few tasks, click a task's status dot to cycle
    todo → in progress → done, watch the Scrubber move.
+4. Go to **Settings**, paste in your Wise Business permanent payment link
+   (grab it from Wise → Payments → "Your open link"). This is a one-time
+   setup — every invoice you create from here on will show it automatically.
+5. Go to **Invoices → New invoice**, fill in a client and a couple of line
+   items, save. Open it and hit **Print / Save as PDF** to see the client-facing
+   version with the payment link embedded.
 
 ## Known limitations to know about (v1)
 
@@ -70,8 +78,13 @@ same two env vars, build command `npm run build`, publish directory `dist`.)
   uses responsive Tailwind classes throughout and should hold up, but give
   it a real look on your phone before you rely on it day-to-day, especially
   the task row on narrow screens.
-- **Mark-as-paid-style features aren't here yet** — this build stops at
-  projects/tasks, per what we scoped for this pass.
+- **Mark-as-paid is manual.** There's no automated bank-reconciliation —
+  you check Wise, then flip the invoice's status yourself. See the README
+  for why that's the honest v1 scope given how Wise's API actually works.
+- **No automatic emailing of invoices yet.** You print/save the invoice as
+  a PDF and send it yourself (email, WhatsApp, wherever). Wiring up
+  automatic sending would need a transactional email service (e.g. Resend
+  has a free tier) — a reasonable next step, not built in this pass.
 
 ## Where to check for errors after launch
 
