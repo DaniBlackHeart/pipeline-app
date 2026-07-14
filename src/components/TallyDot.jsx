@@ -6,6 +6,11 @@ const STATUS_MAP = {
   completed: { color: 'var(--tally-done)', label: 'Completed' },
   done: { color: 'var(--tally-done)', label: 'Done' },
   archived: { color: 'var(--ink-muted)', label: 'Archived' },
+  draft: { color: 'var(--ink-muted)', label: 'Draft' },
+  sent: { color: 'var(--tally-progress)', label: 'Sent' },
+  paid: { color: 'var(--tally-done)', label: 'Paid' },
+  overdue: { color: 'var(--tally-alert)', label: 'Overdue' },
+  cancelled: { color: 'var(--ink-muted)', label: 'Cancelled' },
 }
 
 export default function TallyDot({ status, showLabel = true }) {
