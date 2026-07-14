@@ -4,6 +4,10 @@ import AppShell from './components/AppShell'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import ProjectDetail from './pages/ProjectDetail'
+import Invoices from './pages/Invoices'
+import InvoiceForm from './pages/InvoiceForm'
+import InvoiceDetail from './pages/InvoiceDetail'
+import Settings from './pages/Settings'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -27,6 +31,11 @@ function AppRoutes() {
       <Route path="/login" element={<AuthPage />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/projects/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
+      <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+      <Route path="/invoices/new" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
+      <Route path="/invoices/:invoiceId" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+      <Route path="/invoices/:invoiceId/edit" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

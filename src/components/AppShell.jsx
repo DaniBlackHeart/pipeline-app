@@ -1,5 +1,11 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+
+const NAV_LINKS = [
+  { to: '/', label: 'Projects', end: true },
+  { to: '/invoices', label: 'Invoices' },
+  { to: '/settings', label: 'Settings' },
+]
 
 export default function AppShell({ children }) {
   const { user, orgs, activeOrgId, setActiveOrgId, signOut } = useAuth()
@@ -54,7 +60,29 @@ export default function AppShell({ children }) {
         </div>
       </header>
 
-      <main className="flex-1 px-4 sm:px-6 py-6 max-w-5xl w-full mx-auto">
+      <nav
+        className="print:hidden border-b px-4 sm:px-6 flex gap-1"
+        style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
+      >
+        {NAV_LINKS.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.end}
+            className={({ isActive }) =>
+              `text-sm px-3 py-2.5 border-b-2 transition-colors ${isActive ? 'font-medium' : ''}`
+            }
+            style={({ isActive }) => ({
+              borderColor: isActive ? 'var(--ink)' : 'transparent',
+              color: isActive ? 'var(--ink)' : 'var(--ink-muted)',
+            })}
+          >
+            {link.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <main className="flex-1 px-4 sm:px-6 py-6 max-w-5xl w-full mx-auto print:max-w-none print:p-0">
         {children}
       </main>
     </div>

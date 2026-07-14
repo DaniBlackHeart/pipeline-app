@@ -46,3 +46,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+@media print {
+  body { background: #fff; }
+  a { color: inherit; text-decoration: underline; }
+}
