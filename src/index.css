@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  /* Editing-suite neutral base */
+  --bg: #EEF0F0;
+  --panel: #FFFFFF;
+  --panel-sunken: #E4E7E7;
+  --ink: #14171A;
+  --ink-muted: #6B7078;
+  --border: #D7DBDB;
+
+  /* Tally-light accents */
+  --tally-progress: #D98E2B;   /* in progress / playhead */
+  --tally-progress-soft: #F3DBB3;
+  --tally-alert: #C13B3B;      /* overdue / blocked */
+  --tally-alert-soft: #F0CACA;
+  --tally-done: #2F8F7B;       /* complete / scheduled */
+  --tally-done-soft: #CDE6DF;
+
+  --radius: 10px;
+  --font-display: 'Archivo Expanded', 'Arial Narrow', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+/* Visible keyboard focus, everywhere */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
