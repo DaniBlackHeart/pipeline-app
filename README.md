@@ -4,7 +4,7 @@ A project management workspace — the foundation of a bigger tool that will
 eventually cover invoicing, calendar, ticketing, and reports on top of the
 same schema and auth.
 
-**This build:** multi-tenant auth + projects + tasks + invoicing + calendar.
+**This build:** multi-tenant auth + projects + tasks + invoicing + calendar + ticketing.
 
 ## Tech stack
 
@@ -30,19 +30,35 @@ See `SETUP.md`.
 
 ```
 src/
-  components/     Scrubber, TallyDot, AppShell, NewProjectDialog
+  components/     Scrubber, TallyDot, PriorityBadge, AppShell,
+                  NewProjectDialog, EventDialog
   context/        AuthContext (session, active org, auth actions)
-  lib/            Supabase client, currency formatting
+  lib/            Supabase client, currency formatting, calendar helpers
   pages/          AuthPage, Dashboard, ProjectDetail,
                   Invoices, InvoiceForm, InvoiceDetail, Settings,
-                  Calendar
+                  Calendar, Tickets, TicketForm, TicketDetail
 supabase/
   schema.sql              Multi-tenant core schema + RLS (orgs/projects/tasks)
   schema_invoicing.sql    Invoices, line items, Wise payment link setting
   schema_calendar.sql     Calendar events + RLS
+  schema_ticketing.sql    Tickets + comment thread + RLS
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
+
+## How ticketing works
+
+- **Internal only** — no client-facing submission portal, per what we
+  scoped at the start. Anyone on the team can file, triage, and comment.
+- Type (bug/request/question/other) and priority (low/medium/high/urgent)
+  are kept separate from status (open/in progress/resolved) — urgency
+  doesn't change as a ticket moves through the workflow, so they're shown
+  as two distinct visual elements instead of folded into one.
+- Each ticket has a lightweight comment thread — anyone can post, but only
+  the author can edit or delete their own comment, enforced at the database
+  level (not just hidden in the UI).
+- Tickets can optionally link to a project, same pattern as invoices and
+  calendar events.
 
 ## How the calendar works
 
@@ -83,8 +99,8 @@ public/
 
 ## What's next (not in this build)
 
-- Internal ticketing
 - Report generator
 - Org invite flow (schema already supports multiple members per org — no invite UI yet, since v1 auto-creates one workspace per signup)
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
+- Client-facing ticket submission (current scope is internal-team-only, by design)

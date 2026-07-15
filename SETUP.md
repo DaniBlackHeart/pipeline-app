@@ -11,10 +11,12 @@
    too (adds invoices, line items, and the Wise payment-link setting).
 4. Then paste and run `supabase/schema_calendar.sql` (adds standalone
    calendar events).
-5. Go to **Project Settings → API**. Copy:
+5. Then paste and run `supabase/schema_ticketing.sql` (adds tickets and
+   the comment thread).
+6. Go to **Project Settings → API**. Copy:
    - **Project URL** → this is `VITE_SUPABASE_URL`
    - **anon public key** → this is `VITE_SUPABASE_ANON_KEY`
-6. (Optional, recommended for real use) Under **Authentication → Providers →
+7. (Optional, recommended for real use) Under **Authentication → Providers →
    Email**, you can turn off "Confirm email" while testing, or leave it on
    and confirm via the email Supabase sends.
 
@@ -69,6 +71,8 @@ same two env vars, build command `npm run build`, publish directory `dist`.)
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
    a shoot day) to see it merge in alongside them.
+7. Go to **Tickets → New ticket**, file something with a priority and type,
+   then open it and post a comment to see the discussion thread.
 
 ## Known limitations to know about (v1)
 
