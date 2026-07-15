@@ -73,6 +73,9 @@ same two env vars, build command `npm run build`, publish directory `dist`.)
    a shoot day) to see it merge in alongside them.
 7. Go to **Tickets → New ticket**, file something with a priority and type,
    then open it and post a comment to see the discussion thread.
+8. Go to **Reports** — everything you just created rolls up automatically.
+   Switch the date range, then try **Print / Save as PDF** and **Download
+   CSV** on the invoices table.
 
 ## Known limitations to know about (v1)
 

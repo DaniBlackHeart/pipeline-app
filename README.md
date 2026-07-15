@@ -1,10 +1,9 @@
 # Pipeline
 
-A project management workspace — the foundation of a bigger tool that will
-eventually cover invoicing, calendar, ticketing, and reports on top of the
-same schema and auth.
+A full project management workspace: projects, tasks, invoicing, calendar,
+internal ticketing, and reporting, all on one multi-tenant schema.
 
-**This build:** multi-tenant auth + projects + tasks + invoicing + calendar + ticketing.
+**This build:** all five modules — projects/tasks, invoicing, calendar, ticketing, and reports.
 
 ## Tech stack
 
@@ -33,10 +32,11 @@ src/
   components/     Scrubber, TallyDot, PriorityBadge, AppShell,
                   NewProjectDialog, EventDialog
   context/        AuthContext (session, active org, auth actions)
-  lib/            Supabase client, currency formatting, calendar helpers
+  lib/            Supabase client, currency formatting, calendar helpers,
+                  date-range presets, CSV export
   pages/          AuthPage, Dashboard, ProjectDetail,
                   Invoices, InvoiceForm, InvoiceDetail, Settings,
-                  Calendar, Tickets, TicketForm, TicketDetail
+                  Calendar, Tickets, TicketForm, TicketDetail, Reports
 supabase/
   schema.sql              Multi-tenant core schema + RLS (orgs/projects/tasks)
   schema_invoicing.sql    Invoices, line items, Wise payment link setting
@@ -45,6 +45,22 @@ supabase/
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
+
+## How reports work
+
+- No new tables — Reports is a read-only lens over projects, tasks,
+  invoices, and tickets, scoped to a date range (This month / Last month /
+  This quarter / This year / All time / custom).
+- **Financial summary** groups invoice totals by currency (never summed
+  across currencies, since PHP + USD isn't a real number) — invoiced, paid,
+  outstanding, and overdue for the period.
+- **Ticket activity** shows filed vs. resolved counts for the period, what's
+  still open right now, and average resolution time.
+- **Project rollup** shows every active project's current completion
+  (Scrubber again) alongside what got invoiced against it in the period —
+  a snapshot of health plus period activity in one row.
+- **Print / Save as PDF** for a clean handoff document; **Download CSV** on
+  the invoices and project tables for spreadsheet work.
 
 ## How ticketing works
 
@@ -97,10 +113,10 @@ public/
   computed automatically in the UI when a sent invoice's due date has passed
   — no separate status to remember to set.
 
-## What's next (not in this build)
+## What's next (optional, not built)
 
-- Report generator
 - Org invite flow (schema already supports multiple members per org — no invite UI yet, since v1 auto-creates one workspace per signup)
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
 - Client-facing ticket submission (current scope is internal-team-only, by design)
+- Scheduled/emailed reports (current version is generated on demand in the browser)
