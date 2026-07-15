@@ -16,6 +16,7 @@ const Invoices = lazy(() => import('./pages/Invoices'))
 const InvoiceForm = lazy(() => import('./pages/InvoiceForm'))
 const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Reports = lazy(() => import('./pages/Reports'))
 
 function PageFallback() {
   return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/invoices/:invoiceId" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
       <Route path="/invoices/:invoiceId/edit" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

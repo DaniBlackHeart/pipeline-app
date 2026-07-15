@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { to: '/calendar', label: 'Calendar' },
   { to: '/tickets', label: 'Tickets' },
   { to: '/invoices', label: 'Invoices' },
+  { to: '/reports', label: 'Reports' },
   { to: '/settings', label: 'Settings' },
 ]
 
