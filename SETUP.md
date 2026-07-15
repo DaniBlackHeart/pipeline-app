@@ -9,10 +9,12 @@
    every new signup.
 3. Back in the **SQL Editor**, paste and run `supabase/schema_invoicing.sql`
    too (adds invoices, line items, and the Wise payment-link setting).
-4. Go to **Project Settings → API**. Copy:
+4. Then paste and run `supabase/schema_calendar.sql` (adds standalone
+   calendar events).
+5. Go to **Project Settings → API**. Copy:
    - **Project URL** → this is `VITE_SUPABASE_URL`
    - **anon public key** → this is `VITE_SUPABASE_ANON_KEY`
-5. (Optional, recommended for real use) Under **Authentication → Providers →
+6. (Optional, recommended for real use) Under **Authentication → Providers →
    Email**, you can turn off "Confirm email" while testing, or leave it on
    and confirm via the email Supabase sends.
 
@@ -64,6 +66,9 @@ same two env vars, build command `npm run build`, publish directory `dist`.)
 5. Go to **Invoices → New invoice**, fill in a client and a couple of line
    items, save. Open it and hit **Print / Save as PDF** to see the client-facing
    version with the payment link embedded.
+6. Go to **Calendar** — your project and task due dates already show up
+   automatically. Click a day and add a standalone event (a client call,
+   a shoot day) to see it merge in alongside them.
 
 ## Known limitations to know about (v1)
 

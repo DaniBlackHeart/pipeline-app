@@ -4,7 +4,7 @@ A project management workspace — the foundation of a bigger tool that will
 eventually cover invoicing, calendar, ticketing, and reports on top of the
 same schema and auth.
 
-**This build:** multi-tenant auth + projects + tasks + invoicing.
+**This build:** multi-tenant auth + projects + tasks + invoicing + calendar.
 
 ## Tech stack
 
@@ -34,13 +34,31 @@ src/
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting
   pages/          AuthPage, Dashboard, ProjectDetail,
-                  Invoices, InvoiceForm, InvoiceDetail, Settings
+                  Invoices, InvoiceForm, InvoiceDetail, Settings,
+                  Calendar
 supabase/
   schema.sql              Multi-tenant core schema + RLS (orgs/projects/tasks)
   schema_invoicing.sql    Invoices, line items, Wise payment link setting
+  schema_calendar.sql     Calendar events + RLS
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
+
+## How the calendar works
+
+- **Self-contained, not synced with Google Calendar.** Wiring up real Google
+  Calendar sync means an OAuth app registered in Google Cloud Console
+  (client ID/secret, consent screen, token refresh handling) — a genuine
+  chunk of extra setup that didn't fit this pass. Worth adding later if you
+  want events to show up on your phone's native calendar too.
+- The month grid merges three sources with nothing duplicated: standalone
+  events you create, task due dates, and project due dates — each shown as
+  a colored dot (amber = upcoming, red = overdue, teal = done/completed).
+- Click any day to see its full agenda below the grid. Clicking a task or
+  project item jumps to that project; clicking an event opens it for
+  editing.
+- Task/project due dates are read-only from the calendar (edit them from
+  the project itself) — only standalone events are created/edited here.
 
 ## How invoicing works
 
@@ -65,8 +83,8 @@ public/
 
 ## What's next (not in this build)
 
-- Calendar
 - Internal ticketing
 - Report generator
 - Org invite flow (schema already supports multiple members per org — no invite UI yet, since v1 auto-creates one workspace per signup)
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
+- Google Calendar sync (would require OAuth app setup in Google Cloud Console)
