@@ -11,6 +11,8 @@ const STATUS_MAP = {
   paid: { color: 'var(--tally-done)', label: 'Paid' },
   overdue: { color: 'var(--tally-alert)', label: 'Overdue' },
   cancelled: { color: 'var(--ink-muted)', label: 'Cancelled' },
+  open: { color: 'var(--ink-muted)', label: 'Open' },
+  resolved: { color: 'var(--tally-done)', label: 'Resolved' },
 }
 
 export default function TallyDot({ status, showLabel = true }) {
