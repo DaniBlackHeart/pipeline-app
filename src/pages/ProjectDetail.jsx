@@ -18,6 +18,7 @@ export default function ProjectDetail() {
   const [error, setError] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [addingTask, setAddingTask] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,6 +91,28 @@ export default function ProjectDetail() {
     if (updateError) setError(updateError.message)
   }
 
+  const handleCopyShareLink = async () => {
+    const url = `${window.location.origin}/share/${project.public_token}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 2000)
+    } catch {
+      setError('Could not copy automatically — the link is: ' + url)
+    }
+  }
+
+  const handleRegenerateLink = async () => {
+    const { data: newToken, error: rpcError } = await supabase.rpc('regenerate_project_share_token', {
+      project_id_param: projectId,
+    })
+    if (rpcError) {
+      setError(rpcError.message)
+      return
+    }
+    setProject((prev) => ({ ...prev, public_token: newToken }))
+  }
+
   if (loading) {
     return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
   }
@@ -134,6 +157,32 @@ export default function ProjectDetail() {
 
         <Scrubber percent={percent} tone={project.status === 'completed' ? 'done' : 'progress'} label="Project progress" />
         <p className="text-xs font-mono mt-2" style={{ color: 'var(--ink-muted)' }}>{done}/{tasks.length} tasks done</p>
+      </div>
+
+      <div className="rounded-lg border p-4 mb-6 flex items-center justify-between gap-3 flex-wrap" style={{ background: 'var(--panel-sunken)', borderColor: 'var(--border)' }}>
+        <div className="min-w-0">
+          <p className="text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Client link</p>
+          <p className="text-sm truncate" style={{ color: 'var(--ink-muted)' }}>
+            Read-only status page — no login needed. Anyone with this link can view it.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleCopyShareLink}
+            className="text-sm rounded-md border px-3 py-1.5"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {copiedLink ? 'Copied!' : 'Copy link'}
+          </button>
+          <button
+            onClick={handleRegenerateLink}
+            className="text-sm rounded-md border px-3 py-1.5"
+            style={{ borderColor: 'var(--border)' }}
+            title="Invalidates the old link and creates a new one"
+          >
+            Reset link
+          </button>
+        </div>
       </div>
 
       {error && (

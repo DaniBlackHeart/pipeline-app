@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import AppShell from './components/AppShell'
 import AuthPage from './pages/AuthPage'
+import ShareView from './pages/ShareView'
 
 // Route-level code splitting: each page ships as its own chunk, loaded on
 // first visit rather than all bundled into the initial download.
@@ -48,6 +49,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<AuthPage />} />
+      <Route path="/share/:token" element={<ShareView />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/projects/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
