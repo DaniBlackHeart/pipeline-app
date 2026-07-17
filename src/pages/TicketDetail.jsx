@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
 import PriorityBadge from '../components/PriorityBadge'
+import AttachmentsList from '../components/AttachmentsList'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 
@@ -173,6 +174,11 @@ export default function TicketDetail() {
           {error}
         </p>
       )}
+
+      <h2 className="font-display font-bold text-lg mb-3">Links</h2>
+      <div className="mb-6">
+        <AttachmentsList orgId={activeOrgId} parentType="ticket" parentId={ticketId} />
+      </div>
 
       <h2 className="font-display font-bold text-lg mb-3">Discussion</h2>
 

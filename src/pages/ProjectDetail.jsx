@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
+import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
@@ -19,6 +20,23 @@ export default function ProjectDetail() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [addingTask, setAddingTask] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [attachmentsTask, setAttachmentsTask] = useState(null)
+  const [attachmentCounts, setAttachmentCounts] = useState({})
+
+  const loadAttachmentCounts = useCallback(async (taskRows) => {
+    const ids = (taskRows || tasks).map((t) => t.id)
+    if (ids.length === 0) return
+    const { data, error: countError } = await supabase
+      .from('attachments')
+      .select('parent_id')
+      .eq('parent_type', 'task')
+      .in('parent_id', ids)
+    if (countError) return
+    const counts = {}
+    for (const row of data || []) counts[row.parent_id] = (counts[row.parent_id] || 0) + 1
+    setAttachmentCounts(counts)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -41,7 +59,8 @@ export default function ProjectDetail() {
     setTasks(taskRows || [])
     setMembers((memberRows || []).map((m) => m.profiles).filter(Boolean))
     setLoading(false)
-  }, [projectId, activeOrgId])
+    loadAttachmentCounts(taskRows || [])
+  }, [projectId, activeOrgId, loadAttachmentCounts])
 
   useEffect(() => { load() }, [load])
 
@@ -265,6 +284,15 @@ export default function ProjectDetail() {
               />
 
               <button
+                onClick={() => setAttachmentsTask(task)}
+                className="text-xs flex-shrink-0 rounded-md border px-2 py-1"
+                style={{ borderColor: 'var(--border)' }}
+                aria-label={`Links for ${task.title}`}
+              >
+                🔗{attachmentCounts[task.id] ? ` ${attachmentCounts[task.id]}` : ''}
+              </button>
+
+              <button
                 onClick={() => deleteTask(task.id)}
                 className="text-xs flex-shrink-0"
                 style={{ color: 'var(--tally-alert)' }}
@@ -275,6 +303,14 @@ export default function ProjectDetail() {
             </li>
           ))}
         </ul>
+      )}
+
+      {attachmentsTask && (
+        <TaskAttachmentsDialog
+          orgId={activeOrgId}
+          task={attachmentsTask}
+          onClose={() => { setAttachmentsTask(null); loadAttachmentCounts() }}
+        />
       )}
     </div>
   )
