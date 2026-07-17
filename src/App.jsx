@@ -15,6 +15,8 @@ const TicketDetail = lazy(() => import('./pages/TicketDetail'))
 const Invoices = lazy(() => import('./pages/Invoices'))
 const InvoiceForm = lazy(() => import('./pages/InvoiceForm'))
 const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'))
+const RecurringInvoices = lazy(() => import('./pages/RecurringInvoices'))
+const RecurringInvoiceForm = lazy(() => import('./pages/RecurringInvoiceForm'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Reports = lazy(() => import('./pages/Reports'))
 
@@ -54,6 +56,9 @@ function AppRoutes() {
       <Route path="/tickets/:ticketId" element={<ProtectedRoute><TicketDetail /></ProtectedRoute>} />
       <Route path="/tickets/:ticketId/edit" element={<ProtectedRoute><TicketForm /></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+      <Route path="/invoices/recurring" element={<ProtectedRoute><RecurringInvoices /></ProtectedRoute>} />
+      <Route path="/invoices/recurring/new" element={<ProtectedRoute><RecurringInvoiceForm /></ProtectedRoute>} />
+      <Route path="/invoices/recurring/:templateId/edit" element={<ProtectedRoute><RecurringInvoiceForm /></ProtectedRoute>} />
       <Route path="/invoices/new" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
       <Route path="/invoices/:invoiceId" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
       <Route path="/invoices/:invoiceId/edit" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />

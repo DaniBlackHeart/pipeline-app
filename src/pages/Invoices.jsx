@@ -65,13 +65,22 @@ export default function Invoices() {
             Track what's out, what's paid, what's overdue.
           </p>
         </div>
-        <Link
-          to="/invoices/new"
-          className="rounded-md px-4 py-2 text-sm font-medium flex-shrink-0"
-          style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-        >
-          + New invoice
-        </Link>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            to="/invoices/recurring"
+            className="rounded-md px-4 py-2 text-sm font-medium border"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            Recurring
+          </Link>
+          <Link
+            to="/invoices/new"
+            className="rounded-md px-4 py-2 text-sm font-medium"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            + New invoice
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
