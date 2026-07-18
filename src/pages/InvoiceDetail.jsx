@@ -16,6 +16,7 @@ export default function InvoiceDetail() {
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
+    if (!activeOrgId) return
     setLoading(true)
     setError('')
 

@@ -39,6 +39,7 @@ export default function ProjectDetail() {
   }, [])
 
   const load = useCallback(async () => {
+    if (!activeOrgId) return
     setLoading(true)
     setError('')
 

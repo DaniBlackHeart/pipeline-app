@@ -22,6 +22,7 @@ export default function TicketDetail() {
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
+    if (!activeOrgId) return
     setLoading(true)
     setError('')
 
