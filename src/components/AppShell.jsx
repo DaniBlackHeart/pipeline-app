@@ -22,7 +22,7 @@ export default function AppShell({ children }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
       <header
-        className="border-b px-4 sm:px-6 py-3 flex items-center justify-between gap-4"
+        className="print:hidden border-b px-4 sm:px-6 py-3 flex items-center justify-between gap-4"
         style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
       >
         <Link to="/" className="flex items-center gap-2 flex-shrink-0">
