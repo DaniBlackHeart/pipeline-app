@@ -10,7 +10,8 @@ const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
 export default function ProjectDetail() {
   const { projectId } = useParams()
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
 
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
@@ -18,10 +19,12 @@ export default function ProjectDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskAssignee, setNewTaskAssignee] = useState('')
   const [addingTask, setAddingTask] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [attachmentsTask, setAttachmentsTask] = useState(null)
   const [attachmentCounts, setAttachmentCounts] = useState({})
+  const [activityLog, setActivityLog] = useState([])
 
   const loadAttachmentCounts = useCallback(async (taskRows) => {
     const ids = (taskRows || tasks).map((t) => t.id)
@@ -37,6 +40,17 @@ export default function ProjectDetail() {
     setAttachmentCounts(counts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const loadActivityLog = useCallback(async () => {
+    const { data, error: logError } = await supabase
+      .from('task_activity_log')
+      .select('id, task_title, action, detail, created_at, profiles ( full_name )')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (logError) return
+    setActivityLog(data || [])
+  }, [projectId])
 
   const load = useCallback(async () => {
     if (!activeOrgId) return
@@ -61,7 +75,8 @@ export default function ProjectDetail() {
     setMembers((memberRows || []).map((m) => m.profiles).filter(Boolean))
     setLoading(false)
     loadAttachmentCounts(taskRows || [])
-  }, [projectId, activeOrgId, loadAttachmentCounts])
+    loadActivityLog()
+  }, [projectId, activeOrgId, loadAttachmentCounts, loadActivityLog])
 
   useEffect(() => { load() }, [load])
 
@@ -74,6 +89,7 @@ export default function ProjectDetail() {
       project_id: projectId,
       org_id: activeOrgId,
       title: newTaskTitle.trim(),
+      assignee_id: newTaskAssignee || null,
       position: tasks.length,
       created_by: userData?.user?.id,
     })
@@ -83,6 +99,7 @@ export default function ProjectDetail() {
       return
     }
     setNewTaskTitle('')
+    setNewTaskAssignee('')
     load()
   }
 
@@ -91,18 +108,21 @@ export default function ProjectDetail() {
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)))
     const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id)
     if (updateError) setError(updateError.message)
+    loadActivityLog()
   }
 
   const updateTaskField = async (taskId, fields) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...fields } : t)))
     const { error: updateError } = await supabase.from('tasks').update(fields).eq('id', taskId)
     if (updateError) setError(updateError.message)
+    loadActivityLog()
   }
 
   const deleteTask = async (taskId) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
     const { error: deleteError } = await supabase.from('tasks').delete().eq('id', taskId)
     if (deleteError) setError(deleteError.message)
+    loadActivityLog()
   }
 
   const updateProjectStatus = async (status) => {
@@ -213,26 +233,45 @@ export default function ProjectDetail() {
 
       <h2 className="font-display font-bold text-lg mb-3">Tasks</h2>
 
-      <form onSubmit={handleAddTask} className="flex gap-2 mb-4">
-        <label htmlFor="new-task" className="sr-only">New task title</label>
-        <input
-          id="new-task"
-          type="text"
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          placeholder="Add a task…"
-          className="flex-1 rounded-md border px-3 py-2 text-sm"
-          style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
-        />
-        <button
-          type="submit"
-          disabled={addingTask}
-          className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60 flex-shrink-0"
-          style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-        >
-          Add
-        </button>
-      </form>
+      {isAdmin ? (
+        <form onSubmit={handleAddTask} className="flex gap-2 mb-4 flex-wrap sm:flex-nowrap">
+          <label htmlFor="new-task" className="sr-only">New task title</label>
+          <input
+            id="new-task"
+            type="text"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            placeholder="Add a task…"
+            className="flex-1 min-w-[140px] rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
+          />
+          <label htmlFor="new-task-assignee" className="sr-only">Assignee</label>
+          <select
+            id="new-task-assignee"
+            value={newTaskAssignee}
+            onChange={(e) => setNewTaskAssignee(e.target.value)}
+            className="rounded-md border px-2 py-2 text-sm flex-shrink-0"
+            style={{ borderColor: 'var(--border)', background: 'var(--panel)' }}
+          >
+            <option value="">Unassigned</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            disabled={addingTask}
+            className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60 flex-shrink-0"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            Add
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm rounded-md px-3 py-2 mb-4" style={{ background: 'var(--panel-sunken)', color: 'var(--ink-muted)' }}>
+          Only workspace admins can add new tasks. You can still update status, assignee, and due date below.
+        </p>
+      )}
 
       {tasks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center" style={{ borderColor: 'var(--border)' }}>
@@ -312,6 +351,28 @@ export default function ProjectDetail() {
           task={attachmentsTask}
           onClose={() => { setAttachmentsTask(null); loadAttachmentCounts() }}
         />
+      )}
+
+      <h2 className="font-display font-bold text-lg mt-8 mb-3">Activity</h2>
+      {activityLog.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No activity yet — task changes will show up here.</p>
+      ) : (
+        <ul className="space-y-2">
+          {activityLog.map((entry) => (
+            <li
+              key={entry.id}
+              className="rounded-lg border px-4 py-2.5 text-sm"
+              style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
+            >
+              <span className="font-medium">{entry.profiles?.full_name || 'Someone'}</span>
+              {' — '}
+              <span style={{ color: 'var(--ink-muted)' }}>{entry.detail}</span>
+              <span className="block text-xs font-mono mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+                "{entry.task_title}" · {new Date(entry.created_at).toLocaleString()}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )
