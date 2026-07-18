@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export default function Settings() {
-  const { activeOrgId, activeOrg } = useAuth()
+  const { activeOrgId, activeOrg, user } = useAuth()
   const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
 
   const [wiseLink, setWiseLink] = useState('')
@@ -13,14 +13,18 @@ export default function Settings() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
 
+  const [prefs, setPrefs] = useState(null)
+  const [prefsSaving, setPrefsSaving] = useState(false)
+  const [prefsSaved, setPrefsSaved] = useState(false)
+  const [prefsError, setPrefsError] = useState('')
+
   const load = useCallback(async () => {
     if (!activeOrgId) return
     setLoading(true)
-    const { data, error: fetchError } = await supabase
-      .from('organizations')
-      .select('wise_payment_link, invoice_prefix')
-      .eq('id', activeOrgId)
-      .single()
+    const [{ data, error: fetchError }, { data: prefsData, error: prefsError }] = await Promise.all([
+      supabase.from('organizations').select('wise_payment_link, invoice_prefix').eq('id', activeOrgId).single(),
+      supabase.from('notification_preferences').select('*').eq('org_id', activeOrgId).eq('user_id', user?.id).maybeSingle(),
+    ])
     if (fetchError) {
       setError(fetchError.message)
       setLoading(false)
@@ -28,8 +32,22 @@ export default function Settings() {
     }
     setWiseLink(data.wise_payment_link || '')
     setInvoicePrefix(data.invoice_prefix || 'INV')
+
+    if (prefsData) {
+      setPrefs(prefsData)
+    } else if (!prefsError) {
+      // No row yet (shouldn't normally happen — the trigger creates one on
+      // join — but fall back to sensible defaults rather than a blank form).
+      setPrefs({
+        email_enabled: true,
+        notify_overdue_invoices: true,
+        notify_tasks_due: true,
+        notify_open_tickets: true,
+        notify_recurring_generated: true,
+      })
+    }
     setLoading(false)
-  }, [activeOrgId])
+  }, [activeOrgId, user?.id])
 
   useEffect(() => { load() }, [load])
 
@@ -51,6 +69,26 @@ export default function Settings() {
       return
     }
     setSaved(true)
+  }
+
+  const togglePref = (field) => {
+    setPrefs((prev) => ({ ...prev, [field]: !prev[field] }))
+  }
+
+  const handleSavePrefs = async (e) => {
+    e.preventDefault()
+    setPrefsError('')
+    setPrefsSaved(false)
+    setPrefsSaving(true)
+    const { error: upsertError } = await supabase
+      .from('notification_preferences')
+      .upsert({ org_id: activeOrgId, user_id: user?.id, ...prefs }, { onConflict: 'org_id,user_id' })
+    setPrefsSaving(false)
+    if (upsertError) {
+      setPrefsError(upsertError.message)
+      return
+    }
+    setPrefsSaved(true)
   }
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
@@ -124,6 +162,83 @@ export default function Settings() {
           </button>
         )}
       </form>
+
+      {prefs && (
+        <form onSubmit={handleSavePrefs} className="rounded-lg border p-5 space-y-4 mt-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+          <div>
+            <h2 className="font-display font-bold text-lg mb-1">Email notifications</h2>
+            <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+              Just for you — these don't affect what other members of {activeOrg?.name} receive. A daily digest goes
+              out once a day (only when there's something to report; empty days send nothing). Requires the
+              optional digest job described in SETUP.md to be deployed.
+            </p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={prefs.email_enabled} onChange={() => togglePref('email_enabled')} />
+            Send me the daily digest email
+          </label>
+
+          <div className="space-y-2 pl-1" style={{ opacity: prefs.email_enabled ? 1 : 0.5 }}>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={prefs.notify_overdue_invoices}
+                onChange={() => togglePref('notify_overdue_invoices')}
+                disabled={!prefs.email_enabled}
+              />
+              Overdue invoices
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={prefs.notify_tasks_due}
+                onChange={() => togglePref('notify_tasks_due')}
+                disabled={!prefs.email_enabled}
+              />
+              Tasks due today or overdue
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={prefs.notify_open_tickets}
+                onChange={() => togglePref('notify_open_tickets')}
+                disabled={!prefs.email_enabled}
+              />
+              Open ticket summary
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={prefs.notify_recurring_generated}
+                onChange={() => togglePref('notify_recurring_generated')}
+                disabled={!prefs.email_enabled}
+              />
+              Recurring invoices auto-generated that day
+            </label>
+          </div>
+
+          {prefsError && (
+            <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+              {prefsError}
+            </p>
+          )}
+          {prefsSaved && (
+            <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done)' }} role="status">
+              Notification preferences saved.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={prefsSaving}
+            className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            {prefsSaving ? 'Saving…' : 'Save notification preferences'}
+          </button>
+        </form>
+      )}
     </div>
   )
 }
