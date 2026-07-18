@@ -1,9 +1,12 @@
 # Pipeline
 
-A full project management workspace: projects, tasks, invoicing, calendar,
-internal ticketing, and reporting, all on one multi-tenant schema.
+A full project management workspace: projects, tasks, invoicing (one-off and
+recurring), calendar, internal ticketing, reporting, client sharing, file
+attachments, and email notifications — all on one multi-tenant schema.
 
-**This build:** all five modules — projects/tasks, invoicing, calendar, ticketing, and reports.
+**This build:** all five original modules, plus four follow-on additions —
+recurring invoices, a read-only client portal, link-based attachments, and
+a daily email digest.
 
 ## Tech stack
 
@@ -30,18 +33,30 @@ See `SETUP.md`.
 ```
 src/
   components/     Scrubber, TallyDot, PriorityBadge, AppShell,
-                  NewProjectDialog, EventDialog
+                  NewProjectDialog, EventDialog, AttachmentsList,
+                  TaskAttachmentsDialog
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export
   pages/          AuthPage, Dashboard, ProjectDetail,
-                  Invoices, InvoiceForm, InvoiceDetail, Settings,
-                  Calendar, Tickets, TicketForm, TicketDetail, Reports
+                  Invoices, InvoiceForm, InvoiceDetail,
+                  RecurringInvoices, RecurringInvoiceForm,
+                  Settings, Calendar, Tickets, TicketForm, TicketDetail,
+                  Reports, ShareView (public, unauthenticated)
+api/
+  daily-digest.js         Vercel serverless function — Cron-triggered,
+                          service-role only, never called from the frontend
 supabase/
-  schema.sql              Multi-tenant core schema + RLS (orgs/projects/tasks)
-  schema_invoicing.sql    Invoices, line items, Wise payment link setting
-  schema_calendar.sql     Calendar events + RLS
-  schema_ticketing.sql    Tickets + comment thread + RLS
+  schema.sql                    Multi-tenant core schema + RLS (orgs/projects/tasks)
+  schema_invoicing.sql          Invoices, line items, Wise payment link setting
+  schema_calendar.sql           Calendar events + RLS
+  schema_ticketing.sql          Tickets + comment thread + RLS
+  schema_recurring_invoices.sql Recurring templates + generation function
+  schema_client_sharing.sql     Public read-only project view via token
+  schema_attachments.sql        Link-based attachments on tasks/tickets
+  schema_notifications.sql      Per-user digest preferences
+vercel.json
+  Cron schedule for the daily digest function
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
@@ -113,10 +128,65 @@ public/
   computed automatically in the UI when a sent invoice's due date has passed
   — no separate status to remember to set.
 
+## How recurring invoices work
+
+- Built for retainer clients — set up a template once (client, line items,
+  cadence) instead of re-entering the same invoice every period.
+- **"Generate now"** creates a real invoice + line items from the template
+  and advances its next-run date — a normal in-app action, no extra
+  infrastructure needed.
+- **Full automation is optional**, not required: the same daily digest
+  function (below) checks every template's next-run date and auto-generates
+  anything due, so once that's deployed you don't have to remember at all.
+  Pause a template any time without deleting it.
+
+## How client sharing works
+
+- Every project has a permanent, unguessable share link
+  (`/share/<random-token>`) — copy it from the project page and send it to
+  a client. No login for them, no account needed.
+- The public page is deliberately narrow: project name, status, task
+  progress (the Scrubber again), and only invoices that have actually been
+  **sent or paid** — never drafts, which might be incomplete or not
+  finalized yet.
+- This is enforced at the database level, not just hidden in the UI: the
+  only thing an anonymous visitor can call is one tightly-scoped function
+  that returns exactly those fields. The underlying tables have zero direct
+  public access, same RLS as everywhere else in the app.
+- If a link ever leaks somewhere you didn't intend, **regenerate it** from
+  the project page — the old link stops working immediately.
+
+## How attachments work
+
+- Link-based, not file upload — you paste a labeled URL (a Google Drive
+  file, a Frame.io review link, wherever the actual media already lives)
+  rather than uploading through the app. Matches how you already work, and
+  avoids needing separate file storage/quota to manage.
+- Available on both tasks and tickets, so a review link can sit right next
+  to the work it's about instead of living in a separate message thread.
+
+## How notifications work
+
+- **Nothing is required to get the rest of the app working** — this is the
+  one piece that needs actual deployment setup beyond Supabase + Vercel,
+  because sending real email needs a real email service. See `SETUP.md`.
+- Once deployed, a **daily digest** email goes out to each person who wants
+  one, covering only what they've opted into: overdue invoices, tasks due
+  today or overdue, an open-ticket count, and which recurring invoices got
+  auto-generated that day.
+- **Quiet by design** — if there's nothing to report for someone that day,
+  they get no email at all. No daily "all clear!" noise.
+- Preferences are per-person (Settings → Email notifications), not
+  per-workspace — what you opt into doesn't affect what a teammate receives.
+- The digest job doubles as the automation for recurring invoices (above):
+  one daily run checks due templates and generates them, then emails
+  whoever wants to know what happened.
+
 ## What's next (optional, not built)
 
 - Org invite flow (schema already supports multiple members per org — no invite UI yet, since v1 auto-creates one workspace per signup)
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
 - Client-facing ticket submission (current scope is internal-team-only, by design)
-- Scheduled/emailed reports (current version is generated on demand in the browser)
+- Real-time notifications for specific events (e.g. "a comment was just posted") — the current digest is daily, not instant; true real-time would mean Supabase Database Webhooks firing per event rather than one batched daily job
+- File uploads for attachments (current version is link-only, by design — see "How attachments work")
