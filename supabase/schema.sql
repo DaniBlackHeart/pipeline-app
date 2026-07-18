@@ -17,16 +17,19 @@ alter table public.profiles enable row level security;
 -- Anyone signed in can read profiles of people who share an org with them.
 -- Kept simple for v1: any authenticated user can read any profile's name/avatar
 -- (no sensitive data lives here). Writes are restricted to the profile owner.
+drop policy if exists "profiles are readable by authenticated users" on public.profiles;
 create policy "profiles are readable by authenticated users"
   on public.profiles for select
   to authenticated
   using (true);
 
+drop policy if exists "users can update their own profile" on public.profiles;
 create policy "users can update their own profile"
   on public.profiles for update
   to authenticated
   using (auth.uid() = id);
 
+drop policy if exists "users can insert their own profile" on public.profiles;
 create policy "users can insert their own profile"
   on public.profiles for insert
   to authenticated
@@ -101,36 +104,43 @@ as $$
   );
 $$;
 
+drop policy if exists "members can view their orgs" on public.organizations;
 create policy "members can view their orgs"
   on public.organizations for select
   to authenticated
   using (public.is_org_member(id));
 
+drop policy if exists "authenticated users can create an org" on public.organizations;
 create policy "authenticated users can create an org"
   on public.organizations for insert
   to authenticated
   with check (created_by = auth.uid());
 
+drop policy if exists "org admins can update their org" on public.organizations;
 create policy "org admins can update their org"
   on public.organizations for update
   to authenticated
   using (public.is_org_admin(id));
 
+drop policy if exists "members can view org membership list" on public.org_members;
 create policy "members can view org membership list"
   on public.org_members for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org admins can add members" on public.org_members;
 create policy "org admins can add members"
   on public.org_members for insert
   to authenticated
   with check (public.is_org_admin(org_id) or user_id = auth.uid());
 
+drop policy if exists "org admins can update member roles" on public.org_members;
 create policy "org admins can update member roles"
   on public.org_members for update
   to authenticated
   using (public.is_org_admin(org_id));
 
+drop policy if exists "org admins can remove members" on public.org_members;
 create policy "org admins can remove members"
   on public.org_members for delete
   to authenticated
@@ -193,21 +203,25 @@ create table if not exists public.projects (
 
 alter table public.projects enable row level security;
 
+drop policy if exists "org members can view projects" on public.projects;
 create policy "org members can view projects"
   on public.projects for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create projects" on public.projects;
 create policy "org members can create projects"
   on public.projects for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update projects" on public.projects;
 create policy "org members can update projects"
   on public.projects for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org admins can delete projects" on public.projects;
 create policy "org admins can delete projects"
   on public.projects for delete
   to authenticated
@@ -235,21 +249,25 @@ create table if not exists public.tasks (
 
 alter table public.tasks enable row level security;
 
+drop policy if exists "org members can view tasks" on public.tasks;
 create policy "org members can view tasks"
   on public.tasks for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create tasks" on public.tasks;
 create policy "org members can create tasks"
   on public.tasks for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update tasks" on public.tasks;
 create policy "org members can update tasks"
   on public.tasks for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete tasks" on public.tasks;
 create policy "org members can delete tasks"
   on public.tasks for delete
   to authenticated

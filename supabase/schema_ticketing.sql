@@ -1,5 +1,6 @@
 -- Pipeline: ticketing module (internal use — no client-facing portal)
 -- Run this AFTER schema.sql, schema_invoicing.sql, and schema_calendar.sql.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 
 -- ============================================================
 -- TICKETS
@@ -22,21 +23,25 @@ create table if not exists public.tickets (
 
 alter table public.tickets enable row level security;
 
+drop policy if exists "org members can view tickets" on public.tickets;
 create policy "org members can view tickets"
   on public.tickets for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create tickets" on public.tickets;
 create policy "org members can create tickets"
   on public.tickets for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update tickets" on public.tickets;
 create policy "org members can update tickets"
   on public.tickets for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete tickets" on public.tickets;
 create policy "org members can delete tickets"
   on public.tickets for delete
   to authenticated
@@ -64,11 +69,13 @@ create table if not exists public.ticket_comments (
 
 alter table public.ticket_comments enable row level security;
 
+drop policy if exists "org members can view comments" on public.ticket_comments;
 create policy "org members can view comments"
   on public.ticket_comments for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can post comments" on public.ticket_comments;
 create policy "org members can post comments"
   on public.ticket_comments for insert
   to authenticated
@@ -76,11 +83,13 @@ create policy "org members can post comments"
 
 -- Only the author can edit or delete their own comment — unlike tickets/
 -- tasks, a comment thread should stay attributable to whoever wrote it.
+drop policy if exists "authors can update own comments" on public.ticket_comments;
 create policy "authors can update own comments"
   on public.ticket_comments for update
   to authenticated
   using (author_id = auth.uid());
 
+drop policy if exists "authors can delete own comments" on public.ticket_comments;
 create policy "authors can delete own comments"
   on public.ticket_comments for delete
   to authenticated

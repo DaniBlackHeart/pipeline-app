@@ -1,5 +1,6 @@
 -- Pipeline: calendar module
 -- Run this AFTER schema.sql and schema_invoicing.sql, in the Supabase SQL editor.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 
 -- ============================================================
 -- CALENDAR EVENTS
@@ -24,21 +25,25 @@ create table if not exists public.calendar_events (
 
 alter table public.calendar_events enable row level security;
 
+drop policy if exists "org members can view events" on public.calendar_events;
 create policy "org members can view events"
   on public.calendar_events for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create events" on public.calendar_events;
 create policy "org members can create events"
   on public.calendar_events for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update events" on public.calendar_events;
 create policy "org members can update events"
   on public.calendar_events for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete events" on public.calendar_events;
 create policy "org members can delete events"
   on public.calendar_events for delete
   to authenticated

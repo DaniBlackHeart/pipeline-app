@@ -2,6 +2,9 @@
 
 ## 1. Supabase (backend)
 
+All schema files are safe to run more than once — if one errors partway
+through or you're not sure whether it already ran, just run it again.
+
 1. Create a free project at [supabase.com](https://supabase.com).
 2. In the Supabase dashboard, go to **SQL Editor** → paste the full contents
    of `supabase/schema.sql` → Run. This creates all tables, RLS policies,

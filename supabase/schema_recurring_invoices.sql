@@ -1,5 +1,6 @@
 -- Pipeline: recurring invoices
 -- Run this AFTER schema.sql, schema_invoicing.sql, schema_calendar.sql, schema_ticketing.sql.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 
 -- ============================================================
 -- RECURRING INVOICE TEMPLATES
@@ -27,21 +28,25 @@ create table if not exists public.recurring_invoice_templates (
 
 alter table public.recurring_invoice_templates enable row level security;
 
+drop policy if exists "org members can view recurring templates" on public.recurring_invoice_templates;
 create policy "org members can view recurring templates"
   on public.recurring_invoice_templates for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create recurring templates" on public.recurring_invoice_templates;
 create policy "org members can create recurring templates"
   on public.recurring_invoice_templates for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update recurring templates" on public.recurring_invoice_templates;
 create policy "org members can update recurring templates"
   on public.recurring_invoice_templates for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org admins can delete recurring templates" on public.recurring_invoice_templates;
 create policy "org admins can delete recurring templates"
   on public.recurring_invoice_templates for delete
   to authenticated
@@ -70,21 +75,25 @@ create table if not exists public.recurring_invoice_items (
 
 alter table public.recurring_invoice_items enable row level security;
 
+drop policy if exists "org members can view recurring items" on public.recurring_invoice_items;
 create policy "org members can view recurring items"
   on public.recurring_invoice_items for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create recurring items" on public.recurring_invoice_items;
 create policy "org members can create recurring items"
   on public.recurring_invoice_items for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update recurring items" on public.recurring_invoice_items;
 create policy "org members can update recurring items"
   on public.recurring_invoice_items for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete recurring items" on public.recurring_invoice_items;
 create policy "org members can delete recurring items"
   on public.recurring_invoice_items for delete
   to authenticated

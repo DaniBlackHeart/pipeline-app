@@ -1,5 +1,6 @@
 -- Pipeline: invoicing module
 -- Run this AFTER schema.sql, in the Supabase SQL editor.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 
 -- ============================================================
 -- 1. Org-level payment settings
@@ -39,21 +40,25 @@ create table if not exists public.invoices (
 
 alter table public.invoices enable row level security;
 
+drop policy if exists "org members can view invoices" on public.invoices;
 create policy "org members can view invoices"
   on public.invoices for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create invoices" on public.invoices;
 create policy "org members can create invoices"
   on public.invoices for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update invoices" on public.invoices;
 create policy "org members can update invoices"
   on public.invoices for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org admins can delete invoices" on public.invoices;
 create policy "org admins can delete invoices"
   on public.invoices for delete
   to authenticated
@@ -83,21 +88,25 @@ create table if not exists public.invoice_items (
 
 alter table public.invoice_items enable row level security;
 
+drop policy if exists "org members can view invoice items" on public.invoice_items;
 create policy "org members can view invoice items"
   on public.invoice_items for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can create invoice items" on public.invoice_items;
 create policy "org members can create invoice items"
   on public.invoice_items for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can update invoice items" on public.invoice_items;
 create policy "org members can update invoice items"
   on public.invoice_items for update
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete invoice items" on public.invoice_items;
 create policy "org members can delete invoice items"
   on public.invoice_items for delete
   to authenticated

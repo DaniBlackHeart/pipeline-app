@@ -1,6 +1,7 @@
 -- Pipeline: attachments (link-based — no file storage/upload, just a
 -- labeled URL pointing at Drive, Frame.io, or wherever the real file lives)
 -- Run this AFTER the other schema files.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 
 create table if not exists public.attachments (
   id uuid primary key default gen_random_uuid(),
@@ -18,16 +19,19 @@ create table if not exists public.attachments (
 
 alter table public.attachments enable row level security;
 
+drop policy if exists "org members can view attachments" on public.attachments;
 create policy "org members can view attachments"
   on public.attachments for select
   to authenticated
   using (public.is_org_member(org_id));
 
+drop policy if exists "org members can add attachments" on public.attachments;
 create policy "org members can add attachments"
   on public.attachments for insert
   to authenticated
   with check (public.is_org_member(org_id));
 
+drop policy if exists "org members can delete attachments" on public.attachments;
 create policy "org members can delete attachments"
   on public.attachments for delete
   to authenticated

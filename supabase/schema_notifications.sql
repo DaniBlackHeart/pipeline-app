@@ -1,5 +1,6 @@
 -- Pipeline: notification preferences (backs the daily digest email)
 -- Run this AFTER the other schema files.
+-- Safe to re-run: every policy is dropped and recreated, tables use IF NOT EXISTS.
 --
 -- The digest itself is sent by a Vercel serverless function + Cron job
 -- (see /api/daily-digest.js and SETUP.md) — this file only stores each
@@ -23,16 +24,19 @@ alter table public.notification_preferences enable row level security;
 
 -- Personal settings — visible/editable only by the member they belong to,
 -- regardless of org role. Not admin-gated like Wise/invoice-prefix settings.
+drop policy if exists "users can view their own notification preferences" on public.notification_preferences;
 create policy "users can view their own notification preferences"
   on public.notification_preferences for select
   to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "users can insert their own notification preferences" on public.notification_preferences;
 create policy "users can insert their own notification preferences"
   on public.notification_preferences for insert
   to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "users can update their own notification preferences" on public.notification_preferences;
 create policy "users can update their own notification preferences"
   on public.notification_preferences for update
   to authenticated
