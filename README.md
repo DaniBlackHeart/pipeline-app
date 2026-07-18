@@ -2,11 +2,13 @@
 
 A full project management workspace: projects, tasks, invoicing (one-off and
 recurring), calendar, internal ticketing, reporting, client sharing, file
-attachments, and email notifications — all on one multi-tenant schema.
+attachments, email notifications, and team management — all on one
+multi-tenant schema.
 
-**This build:** all five original modules, plus four follow-on additions —
-recurring invoices, a read-only client portal, link-based attachments, and
-a daily email digest.
+**This build:** all five original modules, plus five follow-on additions —
+recurring invoices, a read-only client portal, link-based attachments, a
+daily email digest, and team invites with admin-gated task creation and a
+per-task activity log.
 
 ## Tech stack
 
@@ -42,10 +44,13 @@ src/
                   Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
                   Settings, Calendar, Tickets, TicketForm, TicketDetail,
-                  Reports, ShareView (public, unauthenticated)
+                  Reports, Team, ShareView (public, unauthenticated)
 api/
   daily-digest.js         Vercel serverless function — Cron-triggered,
                           service-role only, never called from the frontend
+  invite-member.js        Vercel serverless function — called from the Team
+                          page, verifies the caller's own admin role itself
+                          rather than trusting the client
 supabase/
   schema.sql                    Multi-tenant core schema + RLS (orgs/projects/tasks)
   schema_invoicing.sql          Invoices, line items, Wise payment link setting
@@ -55,6 +60,8 @@ supabase/
   schema_client_sharing.sql     Public read-only project view via token
   schema_attachments.sql        Link-based attachments on tasks/tickets
   schema_notifications.sql      Per-user digest preferences
+  schema_team.sql               Email on profiles, admin-only task creation,
+                                 task activity log
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -182,11 +189,44 @@ public/
   one daily run checks due templates and generates them, then emails
   whoever wants to know what happened.
 
+## How team management works
+
+- **Inviting someone** (Team page, admin/owner only) tries the simple path
+  first: if that email already has a Pipeline account, they're added to
+  your workspace immediately, no email needed. Only if the email has no
+  account yet does Supabase create one and send an invite email with a
+  link to set a password.
+- **The permission check happens twice, deliberately.** The UI hides the
+  invite form from non-admins, but that's just convenience — the real
+  enforcement is in `api/invite-member.js`, which independently verifies
+  the caller's own session token and looks up their actual role in that
+  workspace before doing anything. A regular member calling the endpoint
+  directly (bypassing the UI) would still get rejected, because the check
+  doesn't trust anything the client sends about its own permissions.
+- **Task creation is now admin/owner-only.** Everything else about
+  tasks — marking done, reassigning, changing due dates, deleting — stays
+  open to every member. Only adding *new* tasks is gated, and it's enforced
+  at the database level (RLS), not just hidden in the UI.
+- **Assigning at creation, not just after.** Admins now pick who a task
+  goes to right when they add it, instead of adding it unassigned and
+  circling back.
+- **The activity log is automatic, not something app code has to remember
+  to write.** A database trigger on the `tasks` table logs every create,
+  status change, reassignment, due-date change, and deletion — so it can't
+  be silently skipped by a future code change, and it captures changes no
+  matter what path they came through. It shows up at the bottom of each
+  project's page, most recent first.
+- **You can't accidentally lock yourself out.** The Team page won't let you
+  change your own role or remove yourself, and won't let anyone demote or
+  remove the last remaining owner of a workspace.
+
 ## What's next (optional, not built)
 
-- Org invite flow (schema already supports multiple members per org — no invite UI yet, since v1 auto-creates one workspace per signup)
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
 - Client-facing ticket submission (current scope is internal-team-only, by design)
 - Real-time notifications for specific events (e.g. "a comment was just posted") — the current digest is daily, not instant; true real-time would mean Supabase Database Webhooks firing per event rather than one batched daily job
 - File uploads for attachments (current version is link-only, by design — see "How attachments work")
+- An "assigned to me" view across all projects (today, a task only surfaces within the one project it belongs to)
+- Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)
+- A password reset flow in the UI (Supabase Auth supports it; no screen wired up yet)

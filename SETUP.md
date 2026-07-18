@@ -24,14 +24,21 @@ through or you're not sure whether it already ran, just run it again.
    attachments for tasks and tickets).
 9. Then paste and run `supabase/schema_notifications.sql` (adds per-person
    digest preferences).
-10. Go to **Project Settings → API**. Copy:
+10. Then paste and run `supabase/schema_team.sql` (adds email lookup for
+    the team roster, admin-only task creation, and the task activity log).
+11. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
-    - **anon public key** → this is `VITE_SUPABASE_ANON_KEY`
-    - **service_role key** → keep this one aside for the optional digest
-      setup in section 4 below. **Never** put it in `.env.example`, never
-      prefix it `VITE_` (that would bundle it into client-side JS), never
-      commit it anywhere.
-11. (Optional, recommended for real use) Under **Authentication → Providers →
+    - **anon public key** (may be labeled **"Publishable key"** in newer
+      Supabase projects, formatted like `sb_publishable_...`) → this is
+      `VITE_SUPABASE_ANON_KEY`
+    - **service_role key** (may be labeled **"Secret key"** in newer
+      projects, formatted like `sb_secret_...`) → this is needed for two
+      optional server-side features: the daily digest (section 4) and
+      inviting teammates (section 5). Skip both and you can skip this key
+      entirely. If you use either, keep it aside for those sections.
+      **Never** put it in `.env.example`, never prefix it `VITE_` (that
+      would bundle it into client-side JS), never commit it anywhere.
+12. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -88,7 +95,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 10 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 11 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -116,7 +123,43 @@ come due.
 9. Each person controls what they get (or whether they get anything at all)
    from Settings → Email notifications — defaults to everything on.
 
-## 5. Try it
+## 5. Optional: inviting teammates
+
+Skip this if you're working solo — everything else in the app works
+without it, and you can always add people manually later. This wires up
+`api/invite-member.js`, called from the **Team** page when an admin invites
+someone by email.
+
+1. If you already set up `SUPABASE_SERVICE_ROLE_KEY` for the digest above,
+   you're most of the way there — this reuses the same key.
+2. In Vercel → your project → Settings → Environment Variables, add (if not
+   already present from section 4):
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 11 above.
+   - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
+     build the link in the invite email. If you skip this, it falls back
+     to whatever domain the request came in on, which is usually correct.
+3. Redeploy so the env vars take effect.
+4. In Supabase → **Authentication → URL Configuration**, make sure your
+   deployed URL (or `https://your-app.vercel.app/login` specifically) is
+   listed under **Redirect URLs** — otherwise the invite email's link will
+   silently fall back to your project's default Site URL instead of your
+   actual login page. Supabase does not raise an error for this; the link
+   just goes to the wrong place, so it's worth checking.
+5. Optional: customize the wording of the invite email itself under
+   **Authentication → Email Templates → Invite user**.
+6. From the **Team** page (any admin/owner), enter a teammate's email and
+   role, then **Send invite**:
+   - If that email already has a Pipeline account (from anywhere, any
+     workspace), they're added to yours immediately — no email sent, since
+     they don't need one.
+   - If it's a new email, Supabase creates their account and sends them an
+     invite email with a link to set a password. Once they do, they'll see
+     your workspace in their workspace switcher.
+7. **This only works once deployed to Vercel** (or another host running the
+   `api/` function) — trying it against `npm run dev` locally will show a
+   clear error explaining that, rather than failing silently.
+
+## 6. Try it
 
 1. Visit the deployed URL (or localhost), sign up with an email + password.
 2. On signup, a personal workspace ("Your Name's Workspace") is created for
@@ -150,13 +193,18 @@ come due.
     label) to see it show up inline.
 12. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
+13. Go to **Team** — as the workspace's first (and so far only) member,
+    you're the owner, so you'll see the invite form. If you deployed
+    section 5, try inviting a second email (even one of your own alt
+    addresses) to see the whole flow end to end.
+14. Back on a project, notice the "Add a task" input only appears for
+    admins/owners now — everyone else sees a note instead, though they can
+    still update status, assignee, and due date on existing tasks. Change a
+    task's status or assignee, then scroll to the **Activity** section at
+    the bottom of the project page to see it logged automatically.
 
 ## Known limitations to know about
 
-- **No org invite UI yet.** The schema fully supports multiple members per
-  workspace (`org_members` table, roles), but there's no "invite a teammate"
-  screen yet — that's a small addition when you're ready for it, not a
-  redesign.
 - **No password reset flow wired into the UI.** Supabase Auth supports it
   (`resetPasswordForEmail`), it's just not built into this screen yet.
 - **I could not visually test on an actual phone/browser in this
@@ -178,6 +226,20 @@ come due.
 - **Attachments are links, not uploads.** By design (see README) — if you
   ever want real file upload, that's a Supabase Storage bucket + RLS
   policies away, not a rebuild.
+- **The activity log covers tasks only** — not invoices, tickets, or
+  projects. Extending the same trigger pattern to those is straightforward
+  if you want it later, just not built in this pass since it wasn't asked
+  for yet.
+- **No "assigned to me" view.** Assigning a task still only surfaces it
+  within that one project's page — there's no dashboard or digest section
+  yet that shows everything assigned to a specific person across all
+  projects. Worth building if the team grows past a couple of people.
+- **Inviting an existing user doesn't check if they're already active
+  elsewhere.** If you invite someone who already has a Pipeline account
+  (say, from their own separate use of the app), they're added to your
+  workspace immediately with no confirmation step on their end — by design,
+  matching how being added to a Slack workspace or Google Doc usually works,
+  but worth knowing since there's no "accept invite" click required.
 - **The digest function is unauthenticated except for the CRON_SECRET
   check.** That's intentional and sufficient for how Vercel Cron calls it,
   but don't expose `CRON_SECRET` anywhere public (client code, a public
