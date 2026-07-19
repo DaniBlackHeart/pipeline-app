@@ -12,6 +12,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <title>Pipeline</title>
+    <script>
+      // Supabase invite/recovery emails deliver a login token in the URL
+      // hash (#access_token=...&type=invite). The Supabase client auto-reads
+      // and clears that hash on init (detectSessionInUrl), which can race
+      // with this check if done later in React. Capturing it here, in a
+      // plain synchronous script that runs before any module script, avoids
+      // that race — it's how the app tells "just accepted an invite, needs
+      // to set a password" apart from an ordinary return visit.
+      if (window.location.hash.includes('type=invite')) {
+        sessionStorage.setItem('pipeline_auth_type', 'invite')
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
