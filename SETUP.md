@@ -139,12 +139,23 @@ someone by email.
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
 3. Redeploy so the env vars take effect.
-4. In Supabase → **Authentication → URL Configuration**, make sure your
-   deployed URL (or `https://your-app.vercel.app/login` specifically) is
-   listed under **Redirect URLs** — otherwise the invite email's link will
-   silently fall back to your project's default Site URL instead of your
-   actual login page. Supabase does not raise an error for this; the link
-   just goes to the wrong place, so it's worth checking.
+4. In Supabase → **Authentication → URL Configuration**, check **two
+   separate settings** — missing either one causes the exact same symptom:
+   the invite email arrives fine, but clicking it lands on a broken
+   `localhost:3000` link instead of your real site (Supabase doesn't error
+   when this is misconfigured; it just silently uses the wrong URL).
+   - **Site URL** — often still set to its default of `http://localhost:3000`
+     from when the project was first created. Change it to your real
+     deployed URL, e.g. `https://your-app.vercel.app`.
+   - **Redirect URLs** — add `https://your-app.vercel.app/login` to this
+     allow-list too. Supabase only honors a custom `redirectTo` (which is
+     what points the invite link at `/login` specifically) if that exact
+     URL is present here; otherwise it silently falls back to the Site URL
+     above instead, landing on the homepage rather than the login screen.
+   - **Important:** this only affects invite emails sent *after* you fix
+     it. If you already sent one before making this change, that specific
+     email's link is baked with the old (wrong) URL — send that person a
+     fresh invite from the Team page rather than trying to fix the old link.
 5. Optional: customize the wording of the invite email itself under
    **Authentication → Email Templates → Invite user**.
 6. From the **Team** page (any admin/owner), enter a teammate's email and
@@ -153,8 +164,10 @@ someone by email.
      workspace), they're added to yours immediately — no email sent, since
      they don't need one.
    - If it's a new email, Supabase creates their account and sends them an
-     invite email with a link to set a password. Once they do, they'll see
-     your workspace in their workspace switcher.
+     invite email. Clicking it logs them in automatically and shows a
+     **"Set your password"** screen (built specifically because Supabase's
+     invite flow doesn't include one on its own) — once they set one,
+     they'll see your workspace in their workspace switcher going forward.
 7. **This only works once deployed to Vercel** (or another host running the
    `api/` function) — trying it against `npm run dev` locally will show a
    clear error explaining that, rather than failing silently.
