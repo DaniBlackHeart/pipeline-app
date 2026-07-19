@@ -14,14 +14,17 @@
     <title>Pipeline</title>
     <script>
       // Supabase invite/recovery emails deliver a login token in the URL
-      // hash (#access_token=...&type=invite). The Supabase client auto-reads
-      // and clears that hash on init (detectSessionInUrl), which can race
-      // with this check if done later in React. Capturing it here, in a
-      // plain synchronous script that runs before any module script, avoids
-      // that race — it's how the app tells "just accepted an invite, needs
-      // to set a password" apart from an ordinary return visit.
+      // hash (#access_token=...&type=invite or &type=recovery). The
+      // Supabase client auto-reads and clears that hash on init
+      // (detectSessionInUrl), which can race with checking it later in
+      // React. Capturing it here, in a plain synchronous script that runs
+      // before any module script, avoids that race — it's how the app
+      // tells "just accepted an invite" or "just clicked a password reset
+      // link" apart from an ordinary return visit.
       if (window.location.hash.includes('type=invite')) {
         sessionStorage.setItem('pipeline_auth_type', 'invite')
+      } else if (window.location.hash.includes('type=recovery')) {
+        sessionStorage.setItem('pipeline_auth_type', 'recovery')
       }
     </script>
   </head>
