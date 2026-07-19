@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import NotificationBell from './NotificationBell'
 
 const NAV_LINKS = [
   { to: '/', label: 'Projects', end: true },
@@ -39,6 +40,7 @@ export default function AppShell({ children }) {
         </Link>
 
         <div className="flex items-center gap-3 min-w-0">
+          <NotificationBell />
           {orgs.length > 0 && (
             <select
               value={activeOrgId || ''}
