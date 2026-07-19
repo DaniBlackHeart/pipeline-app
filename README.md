@@ -40,7 +40,7 @@ src/
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export
-  pages/          AuthPage, Dashboard, ProjectDetail,
+  pages/          AuthPage, Dashboard, MyTasks, ProjectDetail,
                   Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
                   Settings, Calendar, Tickets, TicketForm, TicketDetail,
@@ -189,6 +189,20 @@ public/
   one daily run checks due templates and generates them, then emails
   whoever wants to know what happened.
 
+## How My Tasks works
+
+- One page, pulling every task assigned to you specifically, across every
+  project in the current workspace — sorted by due date, overdue ones
+  flagged the same way they are elsewhere in the app.
+- Status can be changed right from this list (tap the dot to cycle
+  todo → in progress → done), same as on a project page — no need to open
+  the project just to mark something done.
+- Each task links back to its project, for when you do want the full
+  context.
+- This reads the same `tasks` table everyone else's view does — nothing
+  duplicated, no separate sync step. Switching workspaces (if you're ever
+  in more than one) changes what shows up here too.
+
 ## How team management works
 
 - **Inviting someone** (Team page, admin/owner only) tries the simple path
@@ -227,5 +241,4 @@ public/
 - Client-facing ticket submission (current scope is internal-team-only, by design)
 - Real-time notifications for specific events (e.g. "a comment was just posted") — the current digest is daily, not instant; true real-time would mean Supabase Database Webhooks firing per event rather than one batched daily job
 - File uploads for attachments (current version is link-only, by design — see "How attachments work")
-- An "assigned to me" view across all projects (today, a task only surfaces within the one project it belongs to)
 - Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)

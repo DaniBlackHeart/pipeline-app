@@ -223,6 +223,9 @@ someone by email.
     still update status, assignee, and due date on existing tasks. Change a
     task's status or assignee, then scroll to the **Activity** section at
     the bottom of the project page to see it logged automatically.
+15. Assign a task to yourself (or have it already assigned from an earlier
+    step), then click **My Tasks** in the nav — it should show up there
+    too, regardless of which project it's in.
 
 ## Known limitations to know about
 
