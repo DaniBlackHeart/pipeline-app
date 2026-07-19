@@ -116,6 +116,14 @@ export default function TicketDetail() {
               {TYPE_LABELS[ticket.type]}
             </span>
             <PriorityBadge priority={ticket.priority} />
+            {ticket.submitted_by_client && (
+              <span
+                className="text-xs font-mono uppercase tracking-wide px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--tally-progress-soft)', color: 'var(--tally-progress)' }}
+              >
+                Submitted by client
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <TallyDot status={ticket.status} showLabel={false} />
@@ -153,6 +161,20 @@ export default function TicketDetail() {
             <div>
               <span className="text-xs font-mono uppercase tracking-wide block" style={{ color: 'var(--ink-muted)' }}>Project</span>
               <Link to={`/projects/${ticket.project_id}`} className="underline">{projectName}</Link>
+            </div>
+          )}
+          {ticket.submitted_by_client && (ticket.client_name || ticket.client_email) && (
+            <div>
+              <span className="text-xs font-mono uppercase tracking-wide block" style={{ color: 'var(--ink-muted)' }}>From</span>
+              <span className="text-sm">
+                {ticket.client_name || 'Anonymous'}
+                {ticket.client_email && (
+                  <>
+                    {' · '}
+                    <a href={`mailto:${ticket.client_email}`} className="underline">{ticket.client_email}</a>
+                  </>
+                )}
+              </span>
             </div>
           )}
           <div>

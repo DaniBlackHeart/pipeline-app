@@ -24,7 +24,7 @@ export default function Tickets() {
     const [{ data: ticketRows, error: ticketError }, { data: memberRows, error: memberError }] = await Promise.all([
       supabase
         .from('tickets')
-        .select('id, title, type, priority, status, assignee_id, created_at')
+        .select('id, title, type, priority, status, assignee_id, created_at, submitted_by_client')
         .eq('org_id', activeOrgId)
         .order('created_at', { ascending: false }),
       supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
@@ -129,6 +129,14 @@ export default function Tickets() {
               >
                 <TallyDot status={ticket.status} showLabel={false} />
                 <span className="flex-1 text-sm min-w-0 truncate order-1 sm:order-none w-full sm:w-auto">{ticket.title}</span>
+                {ticket.submitted_by_client && (
+                  <span
+                    className="text-xs font-mono uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: 'var(--tally-progress-soft)', color: 'var(--tally-progress)' }}
+                  >
+                    Client
+                  </span>
+                )}
                 <span className="text-xs font-mono flex-shrink-0" style={{ color: 'var(--ink-muted)' }}>
                   {TYPE_LABELS[ticket.type]}
                 </span>
