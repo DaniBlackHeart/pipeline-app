@@ -28,7 +28,12 @@ through or you're not sure whether it already ran, just run it again.
     the team roster, admin-only task creation, and the task activity log).
 11. Then paste and run `supabase/schema_client_tickets.sql` (lets clients
     file a ticket from their read-only project link).
-12. Go to **Project Settings → API**. Copy:
+12. Then paste and run `supabase/schema_realtime_notifications.sql` (adds
+    the notification bell — a table, three triggers, and one line adding
+    that table to Supabase's realtime broadcast). Nothing else to
+    configure — unlike the digest and invites, this needs no extra
+    account, API key, or deployment step. It works the moment the SQL runs.
+13. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -40,7 +45,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-13. (Optional, recommended for real use) Under **Authentication → Providers →
+14. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -97,7 +102,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 12 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 13 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -136,7 +141,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 12 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 13 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -233,6 +238,12 @@ someone by email.
     a test ticket. Back in the main app's **Tickets** page, it should show
     up tagged **Client**, with the submitter's name/email visible on the
     ticket's detail page if they gave one.
+17. To see the notification bell live: open the app in two browser windows
+    logged in as two different members of the same workspace (or use the
+    teammate you invited earlier). In one window, assign a task to the
+    other person, or comment on a ticket they're assigned to. Watch the
+    bell in their window — it should update within a second or two, no
+    refresh needed. Click a notification to jump to what it's about.
 
 ## Known limitations to know about
 
@@ -248,10 +259,23 @@ someone by email.
   auto-*generate*, but you still print/save and send the PDF yourself. The
   daily digest notifies you that one was generated; it doesn't send the
   invoice itself to the client.
-- **The digest is daily, not real-time.** A comment posted on a ticket at
-  9am won't reach anyone until that day's digest run. True real-time would
-  mean Supabase Database Webhooks firing per event — a bigger addition than
-  fit this pass.
+- **The email digest is still daily, not instant** — if you're not actively
+  in the app, a comment posted at 9am still won't reach your inbox until
+  that day's digest run. The notification bell (above) closes this gap
+  *while you're using the app*, but there's no instant email/push
+  equivalent for when you're away from it entirely.
+- **The bell only fires for task assignment, ticket comments, and client
+  ticket submissions** — not every possible event (invoice status changes,
+  project status changes, calendar events, etc.). Extending it to more
+  event types reuses the exact same pattern (a trigger + an insert into
+  `notifications`), just not built for every table yet.
+- **The bell requires the tab to be open to receive live updates** — it's
+  not a background/push notification. If the tab is closed, notifications
+  still get written to the database (you'll see them next time you open
+  the app), but nothing pings you while it's closed. True background push
+  would need a service worker wired up for push notifications specifically
+  (VAPID keys, a subscription table) — a real addition, not implied by
+  having a PWA already.
 - **Attachments are links, not uploads.** By design (see README) — if you
   ever want real file upload, that's a Supabase Storage bucket + RLS
   policies away, not a rebuild.

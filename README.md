@@ -36,7 +36,7 @@ See `SETUP.md`.
 src/
   components/     Scrubber, TallyDot, PriorityBadge, AppShell,
                   NewProjectDialog, EventDialog, AttachmentsList,
-                  TaskAttachmentsDialog
+                  TaskAttachmentsDialog, NotificationBell
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export
@@ -63,6 +63,7 @@ supabase/
   schema_team.sql               Email on profiles, admin-only task creation,
                                  task activity log
   schema_client_tickets.sql     Client-facing ticket submission function
+  schema_realtime_notifications.sql  Notification bell: table, triggers, realtime publication
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -191,6 +192,30 @@ public/
 
 ## How notifications work
 
+Two separate systems, covering two separate situations: the **bell** for
+when you're actively using the app, the **daily digest** for when you're
+not.
+
+### The notification bell (real-time)
+
+- Appears in the header the moment there's something relevant: someone
+  assigns you a task, comments on a ticket you're assigned to or filed, or
+  a client submits a new ticket (admins/owners only, for that last one).
+- **Genuinely live** — built on Supabase Realtime, not polling. A comment
+  posted while you're looking at the app shows up in the bell within a
+  second or two, no refresh needed.
+- Click a notification to jump straight to what it's about (the project a
+  task lives in, or the ticket itself) and mark it read in the same click;
+  "Mark all read" clears the rest.
+- Written entirely by database triggers, same pattern as the task activity
+  log — nothing in the app's own code decides when to notify someone, so
+  it can't be silently skipped by a future change to how tasks or comments
+  get created.
+- Scoped to whichever workspace is currently active, same as everything
+  else in the app — switching workspaces changes what the bell shows too.
+
+### The daily digest (email)
+
 - **Nothing is required to get the rest of the app working** — this is the
   one piece that needs actual deployment setup beyond Supabase + Vercel,
   because sending real email needs a real email service. See `SETUP.md`.
@@ -255,6 +280,6 @@ public/
 
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
-- Real-time notifications for specific events (e.g. "a comment was just posted") — the current digest is daily, not instant; true real-time would mean Supabase Database Webhooks firing per event rather than one batched daily job
 - File uploads for attachments (current version is link-only, by design — see "How attachments work")
 - Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)
+- Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)
