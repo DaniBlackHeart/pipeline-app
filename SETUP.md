@@ -171,6 +171,14 @@ someone by email.
 7. **This only works once deployed to Vercel** (or another host running the
    `api/` function) — trying it against `npm run dev` locally will show a
    clear error explaining that, rather than failing silently.
+8. **If someone's invite link ever broke** (e.g. it was sent before you'd
+   corrected Site URL / Redirect URLs, so it pointed somewhere dead) —
+   re-inviting them from the Team page won't fix it. Once their account
+   exists at all, `invite-member.js` treats them as "already has an
+   account" and just adds them, skipping the email entirely. The fix is the
+   **"Forgot password?"** link on the login screen — it sends a fresh,
+   correctly-addressed link regardless of how the account was originally
+   created.
 
 ## 6. Try it
 
@@ -218,8 +226,6 @@ someone by email.
 
 ## Known limitations to know about
 
-- **No password reset flow wired into the UI.** Supabase Auth supports it
-  (`resetPasswordForEmail`), it's just not built into this screen yet.
 - **I could not visually test on an actual phone/browser in this
   environment** (no display available where this was built) — the layout
   uses responsive Tailwind classes throughout and should hold up, but give

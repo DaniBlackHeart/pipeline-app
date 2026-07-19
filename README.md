@@ -229,4 +229,3 @@ public/
 - File uploads for attachments (current version is link-only, by design — see "How attachments work")
 - An "assigned to me" view across all projects (today, a task only surfaces within the one project it belongs to)
 - Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)
-- A password reset flow in the UI (Supabase Auth supports it; no screen wired up yet)
