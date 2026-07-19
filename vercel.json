@@ -4,5 +4,11 @@
       "path": "/api/daily-digest",
       "schedule": "0 22 * * *"
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
