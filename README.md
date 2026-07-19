@@ -62,6 +62,7 @@ supabase/
   schema_notifications.sql      Per-user digest preferences
   schema_team.sql               Email on profiles, admin-only task creation,
                                  task activity log
+  schema_client_tickets.sql     Client-facing ticket submission function
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -86,8 +87,12 @@ public/
 
 ## How ticketing works
 
-- **Internal only** — no client-facing submission portal, per what we
-  scoped at the start. Anyone on the team can file, triage, and comment.
+- **Team-side filing and triage is still internal-only** — the ticket list,
+  assignment, comments, and status changes all live behind login, same as
+  everything else. What's changed: clients can now *file* a ticket from
+  their read-only project link (see "How client sharing works" below) —
+  they can't see the ticket list, comment thread, or anyone else's tickets,
+  only submit a new one.
 - Type (bug/request/question/other) and priority (low/medium/high/urgent)
   are kept separate from status (open/in progress/resolved) — urgency
   doesn't change as a ticket moves through the workflow, so they're shown
@@ -162,6 +167,18 @@ public/
   public access, same RLS as everywhere else in the app.
 - If a link ever leaks somewhere you didn't intend, **regenerate it** from
   the project page — the old link stops working immediately.
+- **Clients can also file a ticket directly from that same page** — a
+  small form (their name/email optional, a type, a short summary, details)
+  that creates a real internal ticket, tagged **"Client"** so your team can
+  tell it apart from ones filed internally. This uses the identical
+  security pattern as the read-only view above: one narrow, tightly-scoped
+  function is the *only* thing an anonymous visitor can call — it can
+  create exactly one ticket, on the one project the link belongs to,
+  always as an open/medium-priority ticket (a client can't set priority or
+  assign it to someone; that's still your team's call). It also has a
+  basic rate limit (5 submissions per project per 10 minutes) — simple
+  spam-blunting, not sophisticated bot/abuse protection, worth knowing if
+  this link ever gets shared somewhere more public than intended.
 
 ## How attachments work
 
@@ -238,7 +255,6 @@ public/
 
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
-- Client-facing ticket submission (current scope is internal-team-only, by design)
 - Real-time notifications for specific events (e.g. "a comment was just posted") — the current digest is daily, not instant; true real-time would mean Supabase Database Webhooks firing per event rather than one batched daily job
 - File uploads for attachments (current version is link-only, by design — see "How attachments work")
 - Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)

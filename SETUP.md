@@ -26,7 +26,9 @@ through or you're not sure whether it already ran, just run it again.
    digest preferences).
 10. Then paste and run `supabase/schema_team.sql` (adds email lookup for
     the team roster, admin-only task creation, and the task activity log).
-11. Go to **Project Settings → API**. Copy:
+11. Then paste and run `supabase/schema_client_tickets.sql` (lets clients
+    file a ticket from their read-only project link).
+12. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -38,7 +40,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-12. (Optional, recommended for real use) Under **Authentication → Providers →
+13. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -95,7 +97,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 11 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 12 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -134,7 +136,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 11 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 12 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -226,6 +228,11 @@ someone by email.
 15. Assign a task to yourself (or have it already assigned from an earlier
     step), then click **My Tasks** in the nav — it should show up there
     too, regardless of which project it's in.
+16. Open a project's client share link in a private/incognito window (same
+    one from earlier) and scroll to **"Have something to raise?"** — submit
+    a test ticket. Back in the main app's **Tickets** page, it should show
+    up tagged **Client**, with the submitter's name/email visible on the
+    ticket's detail page if they gave one.
 
 ## Known limitations to know about
 
@@ -248,6 +255,12 @@ someone by email.
 - **Attachments are links, not uploads.** By design (see README) — if you
   ever want real file upload, that's a Supabase Storage bucket + RLS
   policies away, not a rebuild.
+- **Client ticket submission has only basic spam protection** — a simple
+  cap of 5 submissions per project per 10 minutes, enforced in the
+  database. No CAPTCHA, no IP tracking. Fine for normal client use; if a
+  share link ever ends up somewhere public and gets hit by a bot, this
+  slows it down but doesn't stop it outright — regenerate the link if that
+  ever happens.
 - **The activity log covers tasks only** — not invoices, tickets, or
   projects. Extending the same trigger pattern to those is straightforward
   if you want it later, just not built in this pass since it wasn't asked
