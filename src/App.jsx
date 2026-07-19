@@ -8,6 +8,7 @@ import ShareView from './pages/ShareView'
 // Route-level code splitting: each page ships as its own chunk, loaded on
 // first visit rather than all bundled into the initial download.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const MyTasks = lazy(() => import('./pages/MyTasks'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Tickets = lazy(() => import('./pages/Tickets'))
@@ -52,6 +53,7 @@ function AppRoutes() {
       <Route path="/login" element={<AuthPage />} />
       <Route path="/share/:token" element={<ShareView />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
       <Route path="/projects/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
