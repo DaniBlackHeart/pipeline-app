@@ -327,9 +327,9 @@ export default function ProjectDetail() {
                 onClick={() => setAttachmentsTask(task)}
                 className="text-xs flex-shrink-0 rounded-md border px-2 py-1"
                 style={{ borderColor: 'var(--border)' }}
-                aria-label={`Links for ${task.title}`}
+                aria-label={`Attachments for ${task.title}`}
               >
-                🔗{attachmentCounts[task.id] ? ` ${attachmentCounts[task.id]}` : ''}
+                📎{attachmentCounts[task.id] ? ` ${attachmentCounts[task.id]}` : ''}
               </button>
 
               <button

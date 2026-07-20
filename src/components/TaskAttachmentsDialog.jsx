@@ -19,7 +19,7 @@ export default function TaskAttachmentsDialog({ orgId, task, onClose }) {
     >
       <div className="w-full max-w-md rounded-lg p-6" style={{ background: 'var(--panel)' }}>
         <div className="flex items-start justify-between gap-3 mb-1">
-          <h2 id="task-attachments-title" className="font-display font-bold text-lg">Links</h2>
+          <h2 id="task-attachments-title" className="font-display font-bold text-lg">Attachments</h2>
           <button onClick={onClose} className="text-sm" style={{ color: 'var(--ink-muted)' }} aria-label="Close">✕</button>
         </div>
         <p className="text-sm mb-4 truncate" style={{ color: 'var(--ink-muted)' }}>{task.title}</p>
