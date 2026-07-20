@@ -64,6 +64,7 @@ supabase/
                                  task activity log
   schema_client_tickets.sql     Client-facing ticket submission function
   schema_realtime_notifications.sql  Notification bell: table, triggers, realtime publication
+  schema_file_uploads.sql       Storage bucket + RLS, file-kind attachments
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -183,12 +184,31 @@ public/
 
 ## How attachments work
 
-- Link-based, not file upload — you paste a labeled URL (a Google Drive
-  file, a Frame.io review link, wherever the actual media already lives)
-  rather than uploading through the app. Matches how you already work, and
-  avoids needing separate file storage/quota to manage.
-- Available on both tasks and tickets, so a review link can sit right next
-  to the work it's about instead of living in a separate message thread.
+Two ways to attach something, for two different situations:
+
+- **Links** — paste a labeled URL (Google Drive, Frame.io, wherever the
+  real file already lives). Best for anything already living elsewhere,
+  and essential for large files — see the size limit below.
+- **File uploads** — actual files stored inside the app, via Supabase
+  Storage. Best for smaller reference material you want to just live here:
+  screenshots, PDFs, short documents, contracts.
+- **25 MB per file, enforced twice** — checked client-side before the
+  upload even starts, and enforced again at the storage bucket level
+  server-side, so the limit holds even if someone bypasses the app's own
+  UI. This is deliberately not a video-hosting limit; keep using links for
+  video masters and anything large. Supabase's free tier includes a
+  limited total storage quota shared across the whole project — worth
+  checking your current plan's number before uploading a lot of files.
+- **Private, not public.** The storage bucket itself has no public URLs —
+  every file view/download goes through a short-lived signed link
+  generated on the spot (good for about a minute), and storage access is
+  governed by the same org-membership check used everywhere else in the
+  app, just applied to file paths instead of table rows. A file uploaded
+  under one workspace is invisible to every other workspace, same
+  guarantee as everything else here.
+- Available on both tasks and tickets, so a reference file or review link
+  can sit right next to the work it's about instead of living in a
+  separate message thread.
 
 ## How notifications work
 
@@ -280,6 +300,5 @@ not.
 
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
-- File uploads for attachments (current version is link-only, by design — see "How attachments work")
 - Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)
 - Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)

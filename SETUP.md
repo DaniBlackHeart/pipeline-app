@@ -33,7 +33,11 @@ through or you're not sure whether it already ran, just run it again.
     that table to Supabase's realtime broadcast). Nothing else to
     configure — unlike the digest and invites, this needs no extra
     account, API key, or deployment step. It works the moment the SQL runs.
-13. Go to **Project Settings → API**. Copy:
+13. Then paste and run `supabase/schema_file_uploads.sql` (adds a private
+    storage bucket for file-upload attachments, plus the RLS policies that
+    scope it by workspace). Also needs nothing beyond running the SQL —
+    Supabase Storage is already part of every project.
+14. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -45,7 +49,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-14. (Optional, recommended for real use) Under **Authentication → Providers →
+15. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -102,7 +106,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 13 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 14 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -141,7 +145,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 13 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 14 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -219,26 +223,31 @@ someone by email.
     working.
 11. Open a task or ticket and add a link attachment (paste any URL with a
     label) to see it show up inline.
-12. If you deployed the digest job in section 4, run the `curl` test from
+12. On that same task or ticket, click **+ Upload a file** and pick a small
+    file (a screenshot or PDF works well) — it should appear in the list
+    right alongside the link, with its file size shown. Click it to
+    confirm it opens correctly (this generates a fresh signed URL each
+    time, so it should work even a while after uploading).
+13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
-13. Go to **Team** — as the workspace's first (and so far only) member,
+14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the owner, so you'll see the invite form. If you deployed
     section 5, try inviting a second email (even one of your own alt
     addresses) to see the whole flow end to end.
-14. Back on a project, notice the "Add a task" input only appears for
+15. Back on a project, notice the "Add a task" input only appears for
     admins/owners now — everyone else sees a note instead, though they can
     still update status, assignee, and due date on existing tasks. Change a
     task's status or assignee, then scroll to the **Activity** section at
     the bottom of the project page to see it logged automatically.
-15. Assign a task to yourself (or have it already assigned from an earlier
+16. Assign a task to yourself (or have it already assigned from an earlier
     step), then click **My Tasks** in the nav — it should show up there
     too, regardless of which project it's in.
-16. Open a project's client share link in a private/incognito window (same
+17. Open a project's client share link in a private/incognito window (same
     one from earlier) and scroll to **"Have something to raise?"** — submit
     a test ticket. Back in the main app's **Tickets** page, it should show
     up tagged **Client**, with the submitter's name/email visible on the
     ticket's detail page if they gave one.
-17. To see the notification bell live: open the app in two browser windows
+18. To see the notification bell live: open the app in two browser windows
     logged in as two different members of the same workspace (or use the
     teammate you invited earlier). In one window, assign a task to the
     other person, or comment on a ticket they're assigned to. Watch the
@@ -276,9 +285,22 @@ someone by email.
   would need a service worker wired up for push notifications specifically
   (VAPID keys, a subscription table) — a real addition, not implied by
   having a PWA already.
-- **Attachments are links, not uploads.** By design (see README) — if you
-  ever want real file upload, that's a Supabase Storage bucket + RLS
-  policies away, not a rebuild.
+- **File uploads are capped at 25MB and have no preview.** Clicking one
+  opens it in a new tab (image, PDF, whatever the browser knows how to
+  show) — there's no thumbnail or inline preview in the attachment list
+  itself. For anything bigger than 25MB (video masters especially), keep
+  using a link — that cap is enforced on the server too, not just
+  suggested client-side.
+- **No virus/malware scanning on uploaded files.** Supabase Storage
+  doesn't scan file contents, and this app doesn't add a scanning layer on
+  top. Fine for a small internal team and known clients; worth knowing if
+  this link is ever passed somewhere less trusted.
+- **Deleting a file-type attachment is best-effort on the storage side.**
+  The database row always gets removed; the underlying file in storage
+  gets a delete attempt too, but if that specific call fails (network
+  blip, etc.) the row still disappears from the UI while a few KB sit
+  unused in storage. Not visible or harmful, just worth knowing it's not
+  a guaranteed atomic operation.
 - **Client ticket submission has only basic spam protection** — a simple
   cap of 5 submissions per project per 10 minutes, enforced in the
   database. No CAPTCHA, no IP tracking. Fine for normal client use; if a
