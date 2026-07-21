@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
 import PriorityBadge from '../components/PriorityBadge'
 import AttachmentsList from '../components/AttachmentsList'
+import ActivityLog from '../components/ActivityLog'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 
@@ -255,6 +256,8 @@ export default function TicketDetail() {
           Post
         </button>
       </form>
+
+      <ActivityLog entityType="ticket" entityId={ticketId} />
     </div>
   )
 }

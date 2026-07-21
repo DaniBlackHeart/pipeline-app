@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
 import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
+import ActivityLog from '../components/ActivityLog'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
@@ -24,7 +25,6 @@ export default function ProjectDetail() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [attachmentsTask, setAttachmentsTask] = useState(null)
   const [attachmentCounts, setAttachmentCounts] = useState({})
-  const [activityLog, setActivityLog] = useState([])
 
   const loadAttachmentCounts = useCallback(async (taskRows) => {
     const ids = (taskRows || tasks).map((t) => t.id)
@@ -40,17 +40,6 @@ export default function ProjectDetail() {
     setAttachmentCounts(counts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const loadActivityLog = useCallback(async () => {
-    const { data, error: logError } = await supabase
-      .from('task_activity_log')
-      .select('id, task_title, action, detail, created_at, profiles ( full_name )')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (logError) return
-    setActivityLog(data || [])
-  }, [projectId])
 
   const load = useCallback(async () => {
     if (!activeOrgId) return
@@ -75,8 +64,7 @@ export default function ProjectDetail() {
     setMembers((memberRows || []).map((m) => m.profiles).filter(Boolean))
     setLoading(false)
     loadAttachmentCounts(taskRows || [])
-    loadActivityLog()
-  }, [projectId, activeOrgId, loadAttachmentCounts, loadActivityLog])
+  }, [projectId, activeOrgId, loadAttachmentCounts])
 
   useEffect(() => { load() }, [load])
 
@@ -108,21 +96,18 @@ export default function ProjectDetail() {
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)))
     const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id)
     if (updateError) setError(updateError.message)
-    loadActivityLog()
   }
 
   const updateTaskField = async (taskId, fields) => {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...fields } : t)))
     const { error: updateError } = await supabase.from('tasks').update(fields).eq('id', taskId)
     if (updateError) setError(updateError.message)
-    loadActivityLog()
   }
 
   const deleteTask = async (taskId) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
     const { error: deleteError } = await supabase.from('tasks').delete().eq('id', taskId)
     if (deleteError) setError(deleteError.message)
-    loadActivityLog()
   }
 
   const updateProjectStatus = async (status) => {
@@ -353,27 +338,7 @@ export default function ProjectDetail() {
         />
       )}
 
-      <h2 className="font-display font-bold text-lg mt-8 mb-3">Activity</h2>
-      {activityLog.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No activity yet — task changes will show up here.</p>
-      ) : (
-        <ul className="space-y-2">
-          {activityLog.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded-lg border px-4 py-2.5 text-sm"
-              style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
-            >
-              <span className="font-medium">{entry.profiles?.full_name || 'Someone'}</span>
-              {' — '}
-              <span style={{ color: 'var(--ink-muted)' }}>{entry.detail}</span>
-              <span className="block text-xs font-mono mt-0.5" style={{ color: 'var(--ink-muted)' }}>
-                "{entry.task_title}" · {new Date(entry.created_at).toLocaleString()}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ActivityLog projectId={projectId} />
     </div>
   )
 }

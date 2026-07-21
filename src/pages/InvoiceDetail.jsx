@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { formatMoney } from '../lib/currency'
+import ActivityLog from '../components/ActivityLog'
 
 export default function InvoiceDetail() {
   const { invoiceId } = useParams()
@@ -201,6 +202,10 @@ export default function InvoiceDetail() {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="print:hidden">
+        <ActivityLog entityType="invoice" entityId={invoiceId} />
       </div>
     </div>
   )
