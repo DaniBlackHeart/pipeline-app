@@ -37,7 +37,11 @@ through or you're not sure whether it already ran, just run it again.
     storage bucket for file-upload attachments, plus the RLS policies that
     scope it by workspace). Also needs nothing beyond running the SQL —
     Supabase Storage is already part of every project.
-14. Go to **Project Settings → API**. Copy:
+14. Then paste and run `supabase/schema_activity_log.sql` (generalizes the
+    task-only activity log into one covering tasks, tickets, invoices, and
+    projects — and carries over the existing task history rather than
+    resetting it). Also needs nothing beyond running the SQL.
+15. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -49,7 +53,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-15. (Optional, recommended for real use) Under **Authentication → Providers →
+16. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -106,7 +110,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 14 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 15 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -145,7 +149,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 14 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 15 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -253,6 +257,13 @@ someone by email.
     other person, or comment on a ticket they're assigned to. Watch the
     bell in their window — it should update within a second or two, no
     refresh needed. Click a notification to jump to what it's about.
+19. To see the unified activity log: change an invoice's status (draft →
+    sent) or a ticket's priority, then go back to that project's page and
+    scroll to **Activity** — you should see the invoice/ticket change
+    listed right alongside the task changes from earlier, each tagged with
+    what kind of thing it was, all in one combined timeline. Open a ticket
+    or invoice directly and its own **Activity** section shows just that
+    one thing's history.
 
 ## Known limitations to know about
 
@@ -307,14 +318,21 @@ someone by email.
   share link ever ends up somewhere public and gets hit by a bot, this
   slows it down but doesn't stop it outright — regenerate the link if that
   ever happens.
-- **The activity log covers tasks only** — not invoices, tickets, or
-  projects. Extending the same trigger pattern to those is straightforward
-  if you want it later, just not built in this pass since it wasn't asked
-  for yet.
-- **No "assigned to me" view.** Assigning a task still only surfaces it
-  within that one project's page — there's no dashboard or digest section
-  yet that shows everything assigned to a specific person across all
-  projects. Worth building if the team grows past a couple of people.
+- **The activity log doesn't log everything about everything.** Deliberate
+  scope boundaries, not oversights: ticket comments aren't logged as
+  activity (the Discussion thread already is that record), invoice
+  line-item edits aren't logged individually (only the invoice's own
+  status changes are — logging every quantity/rate tweak would drown out
+  what actually matters), and there's no "created project" branch reachable
+  through the UI's delete action since projects can't currently be deleted
+  from the app at all.
+- **The old task-only activity log table (`task_activity_log`) still
+  exists in the database** after running `schema_activity_log.sql` — its
+  history was copied into the new unified `activity_log` table, not moved,
+  so the original rows are still there too. Harmless (nothing reads from
+  it anymore), just not cleaned up automatically, since dropping a table
+  outright felt riskier than leaving a small amount of now-unused data
+  behind.
 - **Inviting an existing user doesn't check if they're already active
   elsewhere.** If you invite someone who already has a Pipeline account
   (say, from their own separate use of the app), they're added to your

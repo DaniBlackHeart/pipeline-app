@@ -36,7 +36,7 @@ See `SETUP.md`.
 src/
   components/     Scrubber, TallyDot, PriorityBadge, AppShell,
                   NewProjectDialog, EventDialog, AttachmentsList,
-                  TaskAttachmentsDialog, NotificationBell
+                  TaskAttachmentsDialog, NotificationBell, ActivityLog
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export
@@ -65,6 +65,8 @@ supabase/
   schema_client_tickets.sql     Client-facing ticket submission function
   schema_realtime_notifications.sql  Notification bell: table, triggers, realtime publication
   schema_file_uploads.sql       Storage bucket + RLS, file-kind attachments
+  schema_activity_log.sql       Unified activity log (tasks, tickets, invoices,
+                                 projects), migrates existing task history
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -286,19 +288,44 @@ not.
 - **Assigning at creation, not just after.** Admins now pick who a task
   goes to right when they add it, instead of adding it unassigned and
   circling back.
-- **The activity log is automatic, not something app code has to remember
-  to write.** A database trigger on the `tasks` table logs every create,
-  status change, reassignment, due-date change, and deletion — so it can't
-  be silently skipped by a future code change, and it captures changes no
-  matter what path they came through. It shows up at the bottom of each
-  project's page, most recent first.
 - **You can't accidentally lock yourself out.** The Team page won't let you
   change your own role or remove yourself, and won't let anyone demote or
   remove the last remaining owner of a workspace.
+
+## How the activity log works
+
+- **One unified log, not four separate ones.** Tasks, tickets, invoices,
+  and projects all write to the same `activity_log` table — so a
+  project's activity feed shows its own status changes interleaved with
+  everything that happened on its tasks, tickets, and invoices, in one
+  combined timeline, sorted by time. A ticket's or invoice's own detail
+  page shows just that one thing's history, filtered down.
+- **Automatic, not something app code has to remember to do.** Every entry
+  is written by a database trigger on the relevant table (create, status
+  change, reassignment, deletion) — so it can't be silently skipped by a
+  future code change, and it captures changes no matter what path they
+  came through, including ones made directly via the API.
+- **Live, like the notification bell.** Uses the same Supabase Realtime
+  publication — a status change made in one browser tab shows up in
+  another tab's activity feed within a second or two, no refresh needed.
+- **What gets logged, per entity:**
+  - *Tasks*: created, status/assignee/due-date/title changes, deleted.
+  - *Tickets*: created, status/priority/assignee changes, deleted.
+    Comments aren't logged separately here — the ticket's own Discussion
+    thread already is that record.
+  - *Invoices*: created, status changes (draft → sent → paid → cancelled),
+    deleted. Line-item edits aren't logged individually — logging every
+    quantity/rate tweak would drown out the status changes that actually
+    matter.
+  - *Projects*: created, status changes, deleted (there's no delete button
+    in the UI today, so that branch is currently unreachable through the
+    app — included anyway so it's already correct if that ever gets added).
+- **Existing task history was preserved, not reset.** This log replaces an
+  earlier task-only version; its data was carried over rather than
+  starting the log from zero.
 
 ## What's next (optional, not built)
 
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
-- Extending the activity log beyond tasks to invoices, tickets, and projects (same trigger pattern, just not built yet)
 - Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)
