@@ -67,6 +67,11 @@ supabase/
   schema_file_uploads.sql       Storage bucket + RLS, file-kind attachments
   schema_activity_log.sql       Unified activity log (tasks, tickets, invoices,
                                  projects), migrates existing task history
+  schema_single_workspace_invites.sql  Invited users never get their own
+                                        extra workspace
+cleanup_redundant_workspaces.sql
+  ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
+  sequence. See its own header before running.
 vercel.json
   Cron schedule for the daily digest function
 public/
@@ -269,12 +274,27 @@ not.
 
 ## How team management works
 
+- **The model this supports: one client, one workspace, one admin.** If
+  you ever license or sell this app, whoever signs up becomes the sole
+  owner of their own workspace — that's what a normal self-service signup
+  still does. Everyone *they* invite only ever lands inside that one
+  workspace, never with a stray workspace of their own. This is enforced
+  at the trigger level (`schema_single_workspace_invites.sql`), not just a
+  UI convention — an invited account's `auth.users` row is created with
+  Supabase's own `invited_at` marker set, which the workspace-creation
+  trigger checks and skips for exactly that case. A normal signup (no
+  invite involved) is unaffected and still gets a workspace automatically.
+- **The workspace switcher only shows up when there's actually more than
+  one to choose from.** With the fix above, a normal invited teammate will
+  only ever belong to one workspace, so the switcher stays out of their
+  way entirely rather than presenting a meaningless choice of one.
 - **Inviting someone** (Team page, admin/owner only) tries the simple path
   first: if that email already has a Pipeline account, they're added to
   your workspace immediately, no email needed. Only if the email has no
   account yet does Supabase create one and send an invite email with a
   link to set a password.
 - **The permission check happens twice, deliberately.** The UI hides the
+  invite form from non-admins, but that's just convenience — the real
   invite form from non-admins, but that's just convenience — the real
   enforcement is in `api/invite-member.js`, which independently verifies
   the caller's own session token and looks up their actual role in that

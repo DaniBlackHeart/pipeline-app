@@ -41,7 +41,12 @@ through or you're not sure whether it already ran, just run it again.
     task-only activity log into one covering tasks, tickets, invoices, and
     projects — and carries over the existing task history rather than
     resetting it). Also needs nothing beyond running the SQL.
-15. Go to **Project Settings → API**. Copy:
+15. Then paste and run `supabase/schema_single_workspace_invites.sql`
+    (makes sure anyone you invite lands only in your workspace — never
+    with an extra empty one of their own). If you've already invited
+    someone before running this, see "Cleaning up existing extra
+    workspaces" further down, after the main setup steps.
+16. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -53,9 +58,34 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-16. (Optional, recommended for real use) Under **Authentication → Providers →
+17. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
+
+### Cleaning up existing extra workspaces
+
+Skip this if you haven't invited anyone yet, or if this is a brand-new
+project — nothing to clean up. If you *have* already invited people before
+running `schema_single_workspace_invites.sql` in step 15, some of them may
+have ended up with an extra, unused personal workspace created under the
+old behavior (landing on "No projects yet" until they manually switched
+workspaces — exactly what happened during this app's own testing).
+
+1. Open `supabase/cleanup_redundant_workspaces.sql`. Read its header first —
+   this is the one file in this whole project that deletes data, so it's
+   worth understanding before running any of it.
+2. Run **only the SELECT query** (the first half of the file) in the SQL
+   editor. Review the list it returns — every row should be someone you
+   recognize who ended up with a leftover empty workspace, not anything
+   you actually want to keep.
+3. Only if that list looks right: find the commented-out `DELETE`
+   statement lower in the same file, select just that block (not the
+   file's explanatory comments), and run it deliberately.
+4. The conditions in the query are deliberately conservative — a workspace
+   only gets flagged if its *only* member is its own owner, that owner
+   also belongs to at least one other real workspace, and it has zero
+   projects/tickets/invoices/calendar events. A workspace anyone's actually
+   used, even a little, is left alone.
 
 **Free tier note:** the project pauses after 7 days with no activity — a
 dashboard visit un-pauses it, data isn't deleted. There's no automated
@@ -110,7 +140,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 15 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 16 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -149,7 +179,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 15 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 16 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -237,7 +267,11 @@ someone by email.
 14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the owner, so you'll see the invite form. If you deployed
     section 5, try inviting a second email (even one of your own alt
-    addresses) to see the whole flow end to end.
+    addresses) to see the whole flow end to end — once they set a
+    password and log in, they should land directly in your workspace, with
+    no separate empty one of their own and no workspace switcher cluttering
+    the header (it only appears once there's genuinely more than one
+    option to choose from).
 15. Back on a project, notice the "Add a task" input only appears for
     admins/owners now — everyone else sees a note instead, though they can
     still update status, assignee, and due date on existing tasks. Change a
