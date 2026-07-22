@@ -41,7 +41,7 @@ export default function AppShell({ children }) {
 
         <div className="flex items-center gap-3 min-w-0">
           <NotificationBell />
-          {orgs.length > 0 && (
+          {orgs.length > 1 && (
             <select
               value={activeOrgId || ''}
               onChange={(e) => setActiveOrgId(e.target.value)}
