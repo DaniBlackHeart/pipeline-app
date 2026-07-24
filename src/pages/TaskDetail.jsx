@@ -7,8 +7,6 @@ import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
 import { formatMoney } from '../lib/currency'
 
-const STATUS_CYCLE = ['todo', 'in_progress', 'done']
-
 function deriveInvoiceDisplayStatus(invoice) {
   if (invoice.status === 'sent' && invoice.due_date && invoice.due_date < new Date().toISOString().slice(0, 10)) {
     return 'overdue'
@@ -96,11 +94,6 @@ export default function TaskDetail() {
     setTask((prev) => ({ ...prev, ...fields }))
     const { error: updateError } = await supabase.from('tasks').update(fields).eq('id', taskId)
     if (updateError) setError(updateError.message)
-  }
-
-  const cycleStatus = () => {
-    const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(task.status) + 1) % STATUS_CYCLE.length]
-    updateField({ status: nextStatus })
   }
 
   const handleDeleteTask = async () => {
@@ -233,9 +226,20 @@ export default function TaskDetail() {
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
         <div className="flex items-start justify-between gap-3 mb-3">
-          <button onClick={cycleStatus} className="flex-shrink-0" title="Click to change status">
-            <TallyDot status={task.status} />
-          </button>
+          <div className="flex items-center gap-2">
+            <TallyDot status={task.status} showLabel={false} />
+            <select
+              value={task.status}
+              onChange={(e) => updateField({ status: e.target.value })}
+              className="text-xs font-mono uppercase rounded-md border px-2 py-1"
+              style={{ borderColor: 'var(--border)' }}
+              aria-label="Task status"
+            >
+              <option value="todo">To do</option>
+              <option value="in_progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
           <button onClick={handleDeleteTask} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
             Delete task
           </button>
