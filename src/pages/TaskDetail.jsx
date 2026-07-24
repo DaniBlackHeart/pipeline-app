@@ -237,7 +237,7 @@ export default function TaskDetail() {
             >
               <option value="todo">To do</option>
               <option value="in_progress">In progress</option>
-              <option value="done">Done</option>
+              <option value="done">Completed</option>
             </select>
           </div>
           <button onClick={handleDeleteTask} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>

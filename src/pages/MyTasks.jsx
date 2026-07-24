@@ -194,7 +194,7 @@ export default function MyTasks() {
       <div className="flex gap-2 mb-4 flex-wrap">
         {[
           { key: 'active', label: 'Active' },
-          { key: 'done', label: 'Done' },
+          { key: 'done', label: 'Completed' },
           { key: 'all', label: 'All' },
         ].map((f) => (
           <button

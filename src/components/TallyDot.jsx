@@ -4,7 +4,7 @@ const STATUS_MAP = {
   on_hold: { color: 'var(--tally-alert)', label: 'On hold' },
   todo: { color: 'var(--ink-muted)', label: 'To do' },
   completed: { color: 'var(--tally-done)', label: 'Completed' },
-  done: { color: 'var(--tally-done)', label: 'Done' },
+  done: { color: 'var(--tally-done)', label: 'Completed' },
   archived: { color: 'var(--ink-muted)', label: 'Archived' },
   draft: { color: 'var(--ink-muted)', label: 'Draft' },
   sent: { color: 'var(--tally-progress)', label: 'Sent' },
