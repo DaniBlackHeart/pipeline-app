@@ -279,12 +279,13 @@ export default function ProjectDetail() {
                 <TallyDot status={task.status} showLabel={false} />
               </button>
 
-              <span
-                className="flex-1 text-sm min-w-0 truncate"
+              <Link
+                to={`/tasks/${task.id}`}
+                className="flex-1 text-sm min-w-0 truncate underline"
                 style={task.status === 'done' ? { textDecoration: 'line-through', color: 'var(--ink-muted)' } : undefined}
               >
                 {task.title}
-              </span>
+              </Link>
 
               <select
                 value={task.assignee_id || ''}
