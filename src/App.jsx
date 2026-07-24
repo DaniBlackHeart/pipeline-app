@@ -10,6 +10,7 @@ import ShareView from './pages/ShareView'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
+const TaskDetail = lazy(() => import('./pages/TaskDetail'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Tickets = lazy(() => import('./pages/Tickets'))
 const TicketForm = lazy(() => import('./pages/TicketForm'))
@@ -55,6 +56,7 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/my-tasks" element={<ProtectedRoute><MyTasks /></ProtectedRoute>} />
       <Route path="/projects/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
+      <Route path="/tasks/:taskId" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/tickets" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
       <Route path="/tickets/new" element={<ProtectedRoute><TicketForm /></ProtectedRoute>} />
