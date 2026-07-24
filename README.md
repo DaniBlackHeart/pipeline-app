@@ -40,7 +40,7 @@ src/
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export
-  pages/          AuthPage, Dashboard, MyTasks, ProjectDetail,
+  pages/          AuthPage, Dashboard, MyTasks, ProjectDetail, TaskDetail,
                   Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
                   Settings, Calendar, Tickets, TicketForm, TicketDetail,
@@ -69,6 +69,8 @@ supabase/
                                  projects), migrates existing task history
   schema_single_workspace_invites.sql  Invited users never get their own
                                         extra workspace
+  schema_task_detail.sql        Standalone tasks, multi-assignee, task
+                                 notes, task-to-task links, task-linked invoices
 cleanup_redundant_workspaces.sql
   ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
   sequence. See its own header before running.
@@ -266,11 +268,58 @@ not.
 - Status can be changed right from this list (tap the dot to cycle
   todo → in progress → done), same as on a project page — no need to open
   the project just to mark something done.
-- Each task links back to its project, for when you do want the full
-  context.
+- Each task links back to its own detail page (see below), and shows which
+  project it belongs to, or "Standalone" if it doesn't belong to one.
 - This reads the same `tasks` table everyone else's view does — nothing
   duplicated, no separate sync step. Switching workspaces (if you're ever
   in more than one) changes what shows up here too.
+- Admins/owners see a **"+ New task"** button here — this is where a
+  standalone task (not tied to any project) gets created; project-linked
+  tasks are still created from that project's own page as before.
+
+## How the task detail page works
+
+Every task is now its own page (click any task title anywhere in the app),
+not just an editable row. What's there:
+
+- **Project & client info.** If the task belongs to a project, this shows
+  the project's own client name, client website, and description,
+  inherited automatically. If it's standalone, these become editable
+  fields directly on the task — a genuinely separate task with its own
+  client info, for work that isn't tied to any specific client project.
+- **Start date, alongside the existing due date.**
+- **Assigned members — plural, with optional role labels.** This is
+  separate from the simple single-assignee dropdown used in project task
+  rows and My Tasks (that one's unchanged, still the quick way to assign
+  one person). This is the richer list for when a task genuinely needs
+  more than one person — e.g. a graphic designer and a web developer on
+  the same task, each labeled with their role. The two aren't kept in
+  sync with each other automatically; think of the simple dropdown as
+  "who's the main owner" and this list as "who's actually working on it."
+- **Attachments** — the same link/file-upload system already used
+  elsewhere, just shown inline on the page instead of behind a dialog.
+- **Invoices** — shows any invoice tied specifically to this task, plus
+  any invoice tied to the whole project it belongs to (each labeled which
+  is which), with status (draft/sent/paid/cancelled, overdue computed the
+  same way as everywhere else) and amount. An invoice can now be linked to
+  one specific task instead of only ever the whole project — useful for
+  billing a single deliverable separately from the rest of the project.
+- **Related tasks** — manually linked, and deliberately not limited to
+  the same project; you can connect a task to another one anywhere in the
+  workspace. Linking is symmetric (link A to B and B shows the connection
+  back to A automatically) and search-based — type part of a title to
+  find and link it.
+- **Notes** — a forum-style thread (each note shows who wrote it and
+  when, oldest first), separate from the task activity log below. Only
+  the author can edit or delete their own note, enforced at the database
+  level, same pattern as ticket comments.
+- **Activity log** — the same unified log used everywhere else in the
+  app, filtered to just this task's own history (status changes, due/start
+  date changes, and the assigned-members list changing).
+- **Notifications piggyback on the existing system** — adding someone to
+  a task's assigned-members list, or posting a note, notifies them the
+  same way task assignment and ticket comments already do (bell +
+  optional daily digest).
 
 ## How team management works
 
@@ -349,3 +398,4 @@ not.
 - Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
 - Google Calendar sync (would require OAuth app setup in Google Cloud Console)
 - Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)
+- A general "browse all tasks" page. My Tasks only shows what's assigned to *you* specifically — a standalone task assigned to someone else (or not assigned to anyone yet) has no page that lists it for everyone to find, the way a project's own task list works for project-linked tasks. Worth building if standalone tasks get used a lot.

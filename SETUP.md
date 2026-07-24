@@ -46,7 +46,11 @@ through or you're not sure whether it already ran, just run it again.
     with an extra empty one of their own). If you've already invited
     someone before running this, see "Cleaning up existing extra
     workspaces" further down, after the main setup steps.
-16. Go to **Project Settings → API**. Copy:
+16. Then paste and run `supabase/schema_task_detail.sql` (adds standalone
+    tasks, multiple assignees with role labels, task notes, manual
+    task-to-task linking, and task-specific invoices). Also needs nothing
+    beyond running the SQL.
+17. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -58,7 +62,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-17. (Optional, recommended for real use) Under **Authentication → Providers →
+18. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -140,7 +144,7 @@ come due.
 4. Generate a random secret for `CRON_SECRET` — anything 16+ characters
    works, e.g. run `openssl rand -hex 16` locally.
 5. In Vercel → your project → Settings → Environment Variables, add:
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 16 above. This key
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 17 above. This key
      bypasses every RLS policy in the database, so it must only live here,
      server-side. It's deliberately never referenced anywhere in `src/`
      (only `api/daily-digest.js` reads it) and deliberately never prefixed
@@ -179,7 +183,7 @@ someone by email.
    you're most of the way there — this reuses the same key.
 2. In Vercel → your project → Settings → Environment Variables, add (if not
    already present from section 4):
-   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 16 above.
+   - `SUPABASE_SERVICE_ROLE_KEY` — from Supabase step 17 above.
    - `SITE_URL` (optional) — e.g. `https://your-app.vercel.app`. Used to
      build the link in the invite email. If you skip this, it falls back
      to whatever domain the request came in on, which is usually correct.
@@ -280,18 +284,24 @@ someone by email.
 16. Assign a task to yourself (or have it already assigned from an earlier
     step), then click **My Tasks** in the nav — it should show up there
     too, regardless of which project it's in.
-17. Open a project's client share link in a private/incognito window (same
+17. Click any task's title anywhere in the app — it now opens its own
+    page. Try adding a second assignee with a role label (e.g. "Web
+    Developer"), post a note, and — on a task that has no project — fill
+    in client name/website directly on the task. As an admin, try **"+ New
+    task"** on My Tasks and leave the project dropdown on "No project
+    (standalone)" to see that flow end to end.
+18. Open a project's client share link in a private/incognito window (same
     one from earlier) and scroll to **"Have something to raise?"** — submit
     a test ticket. Back in the main app's **Tickets** page, it should show
     up tagged **Client**, with the submitter's name/email visible on the
     ticket's detail page if they gave one.
-18. To see the notification bell live: open the app in two browser windows
+19. To see the notification bell live: open the app in two browser windows
     logged in as two different members of the same workspace (or use the
     teammate you invited earlier). In one window, assign a task to the
     other person, or comment on a ticket they're assigned to. Watch the
     bell in their window — it should update within a second or two, no
     refresh needed. Click a notification to jump to what it's about.
-19. To see the unified activity log: change an invoice's status (draft →
+20. To see the unified activity log: change an invoice's status (draft →
     sent) or a ticket's priority, then go back to that project's page and
     scroll to **Activity** — you should see the invoice/ticket change
     listed right alongside the task changes from earlier, each tagged with
@@ -367,6 +377,22 @@ someone by email.
   it anymore), just not cleaned up automatically, since dropping a table
   outright felt riskier than leaving a small amount of now-unused data
   behind.
+- **No page lists every task in the workspace.** My Tasks only shows
+  what's assigned to *you*; a standalone task assigned to someone else (or
+  not assigned to anyone yet) has nowhere that lists it for everyone to
+  browse, unlike a project's own task list. Worth building if standalone
+  tasks get used a lot.
+- **The simple single-assignee dropdown and the richer multi-assignee list
+  on a task's detail page are two separate things, not kept in sync.**
+  Assigning someone via the quick dropdown (in a project's task row, or at
+  task creation) doesn't automatically add them to the detail page's
+  "Assigned members" list, and vice versa. Think of the dropdown as "who's
+  the main owner" and the detail-page list as "who's actually working on
+  it" — related, but intentionally not the same field.
+- **Deleting a task also deletes its notes, its multi-assignee list, and
+  its links to other related tasks** (all cascade with the task). Any
+  invoice linked to that task is *not* deleted — it just becomes unlinked,
+  same philosophy as project-linked invoices.
 - **Inviting an existing user doesn't check if they're already active
   elsewhere.** If you invite someone who already has a Pipeline account
   (say, from their own separate use of the app), they're added to your
