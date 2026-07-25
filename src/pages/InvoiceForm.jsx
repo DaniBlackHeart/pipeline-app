@@ -16,9 +16,12 @@ export default function InvoiceForm() {
   const navigate = useNavigate()
 
   const [projects, setProjects] = useState([])
+  const [allTasks, setAllTasks] = useState([])
+  const [linkType, setLinkType] = useState('project') // 'project' | 'task'
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [taskId, setTaskId] = useState('')
   const [currency, setCurrency] = useState('PHP')
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [dueDate, setDueDate] = useState('')
@@ -43,6 +46,8 @@ export default function InvoiceForm() {
     setClientName(invoice.client_name || '')
     setClientEmail(invoice.client_email || '')
     setProjectId(invoice.project_id || '')
+    setTaskId(invoice.task_id || '')
+    setLinkType(invoice.task_id ? 'task' : 'project')
     setCurrency(invoice.currency || 'PHP')
     setIssueDate(invoice.issue_date || '')
     setDueDate(invoice.due_date || '')
@@ -67,6 +72,15 @@ export default function InvoiceForm() {
         if (projectError) setError(projectError.message)
         else setProjects(data || [])
       })
+    supabase
+      .from('tasks')
+      .select('id, title, project_id, projects ( name )')
+      .eq('org_id', activeOrgId)
+      .order('title', { ascending: true })
+      .then(({ data, error: taskError }) => {
+        if (taskError) setError(taskError.message)
+        else setAllTasks(data || [])
+      })
   }, [activeOrgId])
 
   useEffect(() => { loadExisting() }, [loadExisting])
@@ -88,6 +102,18 @@ export default function InvoiceForm() {
       setError('Enter the client name.')
       return
     }
+    if (!clientEmail.trim()) {
+      setError('Enter the client email.')
+      return
+    }
+    if (linkType === 'project' && !projectId) {
+      setError('Choose which project this invoice is for.')
+      return
+    }
+    if (linkType === 'task' && !taskId) {
+      setError('Choose which task this invoice is for.')
+      return
+    }
     const validItems = items.filter((it) => it.description.trim())
     if (validItems.length === 0) {
       setError('Add at least one line item.')
@@ -99,9 +125,10 @@ export default function InvoiceForm() {
 
     const invoicePayload = {
       org_id: activeOrgId,
-      project_id: projectId || null,
+      project_id: linkType === 'project' ? projectId : null,
+      task_id: linkType === 'task' ? taskId : null,
       client_name: clientName.trim(),
-      client_email: clientEmail.trim() || null,
+      client_email: clientEmail.trim(),
       currency,
       issue_date: issueDate,
       due_date: dueDate || null,
@@ -181,7 +208,7 @@ export default function InvoiceForm() {
               />
             </div>
             <div>
-              <label htmlFor="client-email" className="block text-sm font-medium mb-1">Client email (optional)</label>
+              <label htmlFor="client-email" className="block text-sm font-medium mb-1">Client email</label>
               <input
                 id="client-email"
                 type="email"
@@ -189,22 +216,69 @@ export default function InvoiceForm() {
                 onChange={(e) => setClientEmail(e.target.value)}
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--border)' }}
+                required
               />
             </div>
-            <div>
-              <label htmlFor="linked-project" className="block text-sm font-medium mb-1">Linked project (optional)</label>
-              <select
-                id="linked-project"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <option value="">No linked project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-1">This invoice is for</label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setLinkType('project')}
+                  className="text-xs font-mono uppercase tracking-wide rounded-full px-3 py-1 border transition-colors"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background: linkType === 'project' ? 'var(--ink)' : 'transparent',
+                    color: linkType === 'project' ? 'var(--panel)' : 'var(--ink-muted)',
+                  }}
+                >
+                  A project
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLinkType('task')}
+                  className="text-xs font-mono uppercase tracking-wide rounded-full px-3 py-1 border transition-colors"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background: linkType === 'task' ? 'var(--ink)' : 'transparent',
+                    color: linkType === 'task' ? 'var(--panel)' : 'var(--ink-muted)',
+                  }}
+                >
+                  A specific task
+                </button>
+              </div>
+
+              {linkType === 'project' ? (
+                <select
+                  id="linked-project"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: 'var(--border)' }}
+                  required
+                >
+                  <option value="">Choose a project…</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  id="linked-task"
+                  value={taskId}
+                  onChange={(e) => setTaskId(e.target.value)}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  style={{ borderColor: 'var(--border)' }}
+                  required
+                >
+                  <option value="">Choose a task…</option>
+                  {allTasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}{t.projects?.name ? ` (${t.projects.name})` : ' (standalone)'}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label htmlFor="currency" className="block text-sm font-medium mb-1">Currency</label>

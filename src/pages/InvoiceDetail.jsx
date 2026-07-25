@@ -13,6 +13,7 @@ export default function InvoiceDetail() {
   const [items, setItems] = useState([])
   const [org, setOrg] = useState(null)
   const [projectName, setProjectName] = useState('')
+  const [taskInfo, setTaskInfo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -41,6 +42,9 @@ export default function InvoiceDetail() {
     if (invoiceRow.project_id) {
       const { data: projectRow } = await supabase.from('projects').select('name').eq('id', invoiceRow.project_id).single()
       setProjectName(projectRow?.name || '')
+    } else if (invoiceRow.task_id) {
+      const { data: taskRow } = await supabase.from('tasks').select('id, title').eq('id', invoiceRow.task_id).single()
+      setTaskInfo(taskRow || null)
     }
 
     setLoading(false)
@@ -143,6 +147,12 @@ export default function InvoiceDetail() {
             <div className="sm:text-right">
               <p className="text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Project</p>
               <p className="text-sm">{projectName}</p>
+            </div>
+          )}
+          {taskInfo && (
+            <div className="sm:text-right">
+              <p className="text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Task</p>
+              <Link to={`/tasks/${taskInfo.id}`} className="text-sm underline">{taskInfo.title}</Link>
             </div>
           )}
         </div>
