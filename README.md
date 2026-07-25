@@ -69,6 +69,9 @@ supabase/
                                  projects), migrates existing task history
   schema_single_workspace_invites.sql  Invited users never get their own
                                         extra workspace
+  schema_invoice_requirements.sql      Mandatory client email + mandatory
+                                        project-or-task link on invoices
+                                        and recurring templates
   schema_task_detail.sql        Standalone tasks, multi-assignee, task
                                  notes, task-to-task links, task-linked invoices
 cleanup_redundant_workspaces.sql
@@ -132,7 +135,14 @@ public/
 
 ## How invoicing works
 
-- Every invoice belongs to your workspace and (optionally) links to a project.
+- **Every invoice must link to exactly one of a project or a task** — never
+  both, never neither. A project-wide invoice covers everything under that
+  project; a task-linked invoice is for one specific piece of work,
+  including a standalone task that isn't part of any project at all.
+  Client email is required too, the same way client name always was —
+  every invoice needs someone to actually reach at the other end.
+  Enforced at the database level, not just the form, so this holds even
+  for API access or a future integration, not only what the UI allows.
 - Line items are entered as description / qty / rate; the total recalculates
   automatically (via a database trigger, so it's always correct even if you
   edit items later).
@@ -155,6 +165,10 @@ public/
 
 - Built for retainer clients — set up a template once (client, line items,
   cadence) instead of re-entering the same invoice every period.
+- **Same requirements as a regular invoice:** a template needs a client
+  email and a link to exactly one of a project or a task, same as above —
+  otherwise a generated invoice would violate those rules the moment it's
+  created, silently breaking that template's auto-generation.
 - **"Generate now"** creates a real invoice + line items from the template
   and advances its next-run date — a normal in-app action, no extra
   infrastructure needed.

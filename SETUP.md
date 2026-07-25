@@ -50,7 +50,16 @@ through or you're not sure whether it already ran, just run it again.
     tasks, multiple assignees with role labels, task notes, manual
     task-to-task linking, and task-specific invoices). Also needs nothing
     beyond running the SQL.
-17. Go to **Project Settings → API**. Copy:
+17. Then open `supabase/schema_invoice_requirements.sql` and **read its
+    header before running it** — this one's different from the others.
+    Run the two preview `SELECT` queries at the top first; if either
+    returns rows, fix those specific invoices/templates in the app first
+    (open each one → Edit → fill in the missing email or pick a project/
+    task). Only once both previews come back empty, run the rest of the
+    file (the actual `ALTER TABLE` statements). This makes client email
+    and a project-or-task link mandatory on every invoice and recurring
+    template going forward.
+18. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -62,7 +71,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-18. (Optional, recommended for real use) Under **Authentication → Providers →
+19. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -241,9 +250,11 @@ someone by email.
 4. Go to **Settings**, paste in your Wise Business permanent payment link
    (grab it from Wise → Payments → "Your open link"). This is a one-time
    setup — every invoice you create from here on will show it automatically.
-5. Go to **Invoices → New invoice**, fill in a client and a couple of line
-   items, save. Open it and hit **Print / Save as PDF** to see the client-facing
-   version with the payment link embedded.
+5. Go to **Invoices → New invoice**, fill in a client, their email (now
+   required), pick whether it's for a project or a specific task (also
+   required — you'll need at least one project or task created already),
+   and a couple of line items, then save. Open it and hit **Print / Save
+   as PDF** to see the client-facing version with the payment link embedded.
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
    a shoot day) to see it merge in alongside them.
@@ -323,6 +334,9 @@ someone by email.
   auto-*generate*, but you still print/save and send the PDF yourself. The
   daily digest notifies you that one was generated; it doesn't send the
   invoice itself to the client.
+- **You need at least one project or task created before you can create an
+  invoice at all**, now that a link is mandatory. If your workspace is
+  completely empty, create a project or a standalone task first.
 - **The email digest is still daily, not instant** — if you're not actively
   in the app, a comment posted at 9am still won't reach your inbox until
   that day's digest run. The notification bell (above) closes this gap
