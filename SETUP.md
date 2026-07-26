@@ -59,7 +59,15 @@ through or you're not sure whether it already ran, just run it again.
     file (the actual `ALTER TABLE` statements). This makes client email
     and a project-or-task link mandatory on every invoice and recurring
     template going forward.
-18. Go to **Project Settings → API**. Copy:
+18. Then open `supabase/schema_project_requirements.sql` — same
+    preview-first caution as the invoice file above, but only for two of
+    its columns. Run the single preview `SELECT` at the top; if it
+    returns rows, fix those specific projects in the app first (fill in
+    the missing client name and/or due date). The new `start_date` column
+    doesn't need this — every existing project gets one automatically
+    (backfilled from its creation date), so only client name and due date
+    need manual review. Once the preview is clear, run the rest of the file.
+19. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -71,7 +79,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-19. (Optional, recommended for real use) Under **Authentication → Providers →
+20. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -245,8 +253,11 @@ someone by email.
    you automatically — this is the multi-tenant org the schema is built
    around, so future team members or licensed workspaces slot into the same
    structure without a rebuild.
-3. Create a project, add a few tasks, click a task's status dot to cycle
-   todo → in progress → done, watch the Scrubber move.
+3. Create a project — client name, start date, and due date are now
+   required, and you can optionally assign one or more members with a
+   role label (e.g. "Video Editor") right from the creation dialog. Add a
+   few tasks, click a task's status dot to cycle todo → in progress →
+   done, watch the Scrubber move.
 4. Go to **Settings**, paste in your Wise Business permanent payment link
    (grab it from Wise → Payments → "Your open link"). This is a one-time
    setup — every invoice you create from here on will show it automatically.
@@ -337,6 +348,10 @@ someone by email.
 - **You need at least one project or task created before you can create an
   invoice at all**, now that a link is mandatory. If your workspace is
   completely empty, create a project or a standalone task first.
+- **No editing client name, start date, or due date after a project is
+  created** through a dedicated form field yet — these show on the project
+  page but aren't independently editable there the way status is. Worth
+  adding if you find yourself needing to correct one after the fact.
 - **The email digest is still daily, not instant** — if you're not actively
   in the app, a comment posted at 9am still won't reach your inbox until
   that day's digest run. The notification bell (above) closes this gap

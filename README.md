@@ -72,6 +72,8 @@ supabase/
   schema_invoice_requirements.sql      Mandatory client email + mandatory
                                         project-or-task link on invoices
                                         and recurring templates
+  schema_project_requirements.sql      Mandatory client/due/start date,
+                                        multi-assignee support on projects
   schema_task_detail.sql        Standalone tasks, multi-assignee, task
                                  notes, task-to-task links, task-linked invoices
 cleanup_redundant_workspaces.sql
@@ -82,6 +84,21 @@ vercel.json
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
+
+## How projects work
+
+- **Client name, start date, and due date are all mandatory** — a project
+  can't be created without them. Enforced at the database level, not just
+  the form, same as the invoice requirements below.
+- **Multiple assigned members, each with an optional role label** (e.g.
+  "Video Editor", "Project Coordinator") — same pattern as task assignees.
+  Add people right at creation time, or later from the project's own page.
+  Adding someone notifies them, same as everywhere else people get added
+  to something in this app.
+- These rules only apply to *new* projects and only going forward — see
+  `schema_project_requirements.sql`'s own header for how existing projects
+  (which may predate mandatory client/due dates) are handled without
+  breaking anything already in your database.
 
 ## How reports work
 
