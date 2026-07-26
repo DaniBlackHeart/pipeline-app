@@ -25,6 +25,10 @@ export default function ProjectDetail() {
   const [copiedLink, setCopiedLink] = useState(false)
   const [attachmentsTask, setAttachmentsTask] = useState(null)
   const [attachmentCounts, setAttachmentCounts] = useState({})
+  const [assignees, setAssignees] = useState([])
+  const [newAssigneeId, setNewAssigneeId] = useState('')
+  const [newAssigneeRole, setNewAssigneeRole] = useState('')
+  const [addingAssignee, setAddingAssignee] = useState(false)
 
   const loadAttachmentCounts = useCallback(async (taskRows) => {
     const ids = (taskRows || tasks).map((t) => t.id)
@@ -46,15 +50,16 @@ export default function ProjectDetail() {
     setLoading(true)
     setError('')
 
-    const [{ data: projectRow, error: projectError }, { data: taskRows, error: taskError }, { data: memberRows, error: memberError }] =
+    const [{ data: projectRow, error: projectError }, { data: taskRows, error: taskError }, { data: memberRows, error: memberError }, { data: assigneeRows, error: assigneeError }] =
       await Promise.all([
         supabase.from('projects').select('*').eq('id', projectId).single(),
         supabase.from('tasks').select('*').eq('project_id', projectId).order('position', { ascending: true }),
         supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+        supabase.from('project_assignees').select('user_id, role_label, profiles ( id, full_name )').eq('project_id', projectId).order('created_at', { ascending: true }),
       ])
 
-    if (projectError || taskError || memberError) {
-      setError((projectError || taskError || memberError).message)
+    if (projectError || taskError || memberError || assigneeError) {
+      setError((projectError || taskError || memberError || assigneeError).message)
       setLoading(false)
       return
     }
@@ -62,6 +67,7 @@ export default function ProjectDetail() {
     setProject(projectRow)
     setTasks(taskRows || [])
     setMembers((memberRows || []).map((m) => m.profiles).filter(Boolean))
+    setAssignees(assigneeRows || [])
     setLoading(false)
     loadAttachmentCounts(taskRows || [])
   }, [projectId, activeOrgId, loadAttachmentCounts])
@@ -114,6 +120,32 @@ export default function ProjectDetail() {
     setProject((prev) => ({ ...prev, status }))
     const { error: updateError } = await supabase.from('projects').update({ status }).eq('id', projectId)
     if (updateError) setError(updateError.message)
+  }
+
+  const handleAddAssignee = async (e) => {
+    e.preventDefault()
+    if (!newAssigneeId) return
+    setAddingAssignee(true)
+    const { error: insertError } = await supabase.from('project_assignees').insert({
+      project_id: projectId,
+      user_id: newAssigneeId,
+      role_label: newAssigneeRole.trim() || null,
+      org_id: activeOrgId,
+    })
+    setAddingAssignee(false)
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+    setNewAssigneeId('')
+    setNewAssigneeRole('')
+    load()
+  }
+
+  const handleRemoveAssignee = async (userId) => {
+    setAssignees((prev) => prev.filter((a) => a.user_id !== userId))
+    const { error: deleteError } = await supabase.from('project_assignees').delete().eq('project_id', projectId).eq('user_id', userId)
+    if (deleteError) setError(deleteError.message)
   }
 
   const handleCopyShareLink = async () => {
@@ -177,7 +209,12 @@ export default function ProjectDetail() {
           </select>
         </div>
         <h1 className="font-display font-bold text-2xl mb-1">{project.name}</h1>
-        {project.client_name && <p className="text-sm mb-3" style={{ color: 'var(--ink-muted)' }}>{project.client_name}</p>}
+        {project.client_name && <p className="text-sm mb-1" style={{ color: 'var(--ink-muted)' }}>{project.client_name}</p>}
+        <p className="text-xs font-mono mb-3" style={{ color: 'var(--ink-muted)' }}>
+          {project.start_date && `Starts ${new Date(project.start_date).toLocaleDateString()}`}
+          {project.start_date && project.due_date && ' · '}
+          {project.due_date && `Due ${new Date(project.due_date).toLocaleDateString()}`}
+        </p>
         {project.description && <p className="text-sm mb-4">{project.description}</p>}
 
         <Scrubber percent={percent} tone={project.status === 'completed' ? 'done' : 'progress'} label="Project progress" />
@@ -208,6 +245,57 @@ export default function ProjectDetail() {
             Reset link
           </button>
         </div>
+      </div>
+
+      <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <h2 className="font-display font-bold text-lg mb-3">Assigned members</h2>
+        {assignees.length === 0 ? (
+          <p className="text-sm mb-3" style={{ color: 'var(--ink-muted)' }}>Nobody added yet.</p>
+        ) : (
+          <ul className="space-y-1.5 mb-3">
+            {assignees.map((a) => (
+              <li key={a.user_id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2" style={{ borderColor: 'var(--border)' }}>
+                <span className="text-sm">
+                  {a.profiles?.full_name || 'Member'}
+                  {a.role_label && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({a.role_label})</span>}
+                </span>
+                <button onClick={() => handleRemoveAssignee(a.user_id)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form onSubmit={handleAddAssignee} className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={newAssigneeId}
+            onChange={(e) => setNewAssigneeId(e.target.value)}
+            className="rounded-md border px-3 py-2 text-sm flex-1"
+            style={{ borderColor: 'var(--border)' }}
+            aria-label="Choose a member to assign"
+          >
+            <option value="">Choose a member…</option>
+            {members.filter((m) => !assignees.some((a) => a.user_id === m.id)).map((m) => (
+              <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newAssigneeRole}
+            onChange={(e) => setNewAssigneeRole(e.target.value)}
+            placeholder="Role (optional), e.g. Video Editor"
+            className="rounded-md border px-3 py-2 text-sm flex-1"
+            style={{ borderColor: 'var(--border)' }}
+          />
+          <button
+            type="submit"
+            disabled={addingAssignee || !newAssigneeId}
+            className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60 flex-shrink-0"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            Add
+          </button>
+        </form>
       </div>
 
       {error && (
