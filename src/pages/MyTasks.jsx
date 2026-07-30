@@ -29,12 +29,26 @@ export default function MyTasks() {
     setLoading(true)
     setError('')
 
-    const { data, error: fetchError } = await supabase
+    // "Assigned to me" means either the simple primary assignee_id, or
+    // being in the richer multi-assignee list (task_assignees) — the two
+    // are tracked independently, so a task only in the richer list would
+    // otherwise never show up here.
+    const { data: assigneeRows } = await supabase
+      .from('task_assignees')
+      .select('task_id')
+      .eq('user_id', user.id)
+    const richAssigneeTaskIds = (assigneeRows || []).map((r) => r.task_id)
+
+    let query = supabase
       .from('tasks')
       .select('id, title, status, due_date, project_id, projects ( id, name )')
       .eq('org_id', activeOrgId)
-      .eq('assignee_id', user.id)
-      .order('due_date', { ascending: true, nullsFirst: false })
+
+    query = richAssigneeTaskIds.length > 0
+      ? query.or(`assignee_id.eq.${user.id},id.in.(${richAssigneeTaskIds.join(',')})`)
+      : query.eq('assignee_id', user.id)
+
+    const { data, error: fetchError } = await query.order('due_date', { ascending: true, nullsFirst: false })
 
     if (fetchError) {
       setError(fetchError.message)
