@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { dateKey } from '../lib/calendarUtils'
@@ -10,6 +11,16 @@ import TallyDot from '../components/TallyDot'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 const PRIORITY_LABELS = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' }
+const STATUS_GROUPS = [
+  { key: 'todo', label: 'To do' },
+  { key: 'in_progress', label: 'In progress' },
+  { key: 'done', label: 'Completed' },
+]
+const TABS = [
+  { key: 'financial', label: 'Financial summary' },
+  { key: 'tickets', label: 'Ticket activity' },
+  { key: 'projects', label: 'Project rollup' },
+]
 
 function withinRange(isoString, start, end) {
   const key = dateKey(isoString)
@@ -23,7 +34,10 @@ function emptyCurrencyBucket() {
 }
 
 export default function Reports() {
-  const { activeOrgId, activeOrg } = useAuth()
+  const { activeOrgId, activeOrg, user } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
+
+  const [activeTab, setActiveTab] = useState('financial')
   const [preset, setPreset] = useState('this_month')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -31,9 +45,15 @@ export default function Reports() {
   const [invoices, setInvoices] = useState([])
   const [projects, setProjects] = useState([])
   const [tasks, setTasks] = useState([])
+  const [taskAssignees, setTaskAssignees] = useState([])
+  const [notesCounts, setNotesCounts] = useState({})
+  const [members, setMembers] = useState([])
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [expandedProjects, setExpandedProjects] = useState({})
+  const [standaloneExpanded, setStandaloneExpanded] = useState(false)
 
   const range = preset === 'custom'
     ? { start: customStart || null, end: customEnd || null }
@@ -51,16 +71,27 @@ export default function Reports() {
     if (range.start) invoiceQuery = invoiceQuery.gte('issue_date', range.start)
     if (range.end) invoiceQuery = invoiceQuery.lte('issue_date', range.end)
 
-    const [{ data: invoiceRows, error: invoiceError }, { data: projectRows, error: projectError }, { data: taskRows, error: taskError }, { data: ticketRows, error: ticketError }] =
-      await Promise.all([
-        invoiceQuery,
-        supabase.from('projects').select('id, name, status, due_date').eq('org_id', activeOrgId).neq('status', 'archived'),
-        supabase.from('tasks').select('id, project_id, status').eq('org_id', activeOrgId),
-        supabase.from('tickets').select('id, type, priority, status, project_id, created_at, resolved_at').eq('org_id', activeOrgId),
-      ])
+    const [
+      { data: invoiceRows, error: invoiceError },
+      { data: projectRows, error: projectError },
+      { data: taskRows, error: taskError },
+      { data: assigneeRows, error: assigneeError },
+      { data: commentRows, error: commentError },
+      { data: memberRows, error: memberError },
+      { data: ticketRows, error: ticketError },
+    ] = await Promise.all([
+      invoiceQuery,
+      supabase.from('projects').select('id, name, status, due_date').eq('org_id', activeOrgId).neq('status', 'archived'),
+      supabase.from('tasks').select('id, title, status, project_id, start_date, due_date, assignee_id').eq('org_id', activeOrgId),
+      supabase.from('task_assignees').select('task_id, user_id, role_label, profiles ( full_name )').eq('org_id', activeOrgId),
+      supabase.from('task_comments').select('task_id').eq('org_id', activeOrgId),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+      supabase.from('tickets').select('id, type, priority, status, project_id, created_at, resolved_at').eq('org_id', activeOrgId),
+    ])
 
-    if (invoiceError || projectError || taskError || ticketError) {
-      setError((invoiceError || projectError || taskError || ticketError).message)
+    const firstError = invoiceError || projectError || taskError || assigneeError || commentError || memberError || ticketError
+    if (firstError) {
+      setError(firstError.message)
       setLoading(false)
       return
     }
@@ -68,6 +99,13 @@ export default function Reports() {
     setInvoices(invoiceRows || [])
     setProjects(projectRows || [])
     setTasks(taskRows || [])
+    setTaskAssignees(assigneeRows || [])
+    setMembers((memberRows || []).map((m) => m.profiles).filter(Boolean))
+
+    const counts = {}
+    for (const row of commentRows || []) counts[row.task_id] = (counts[row.task_id] || 0) + 1
+    setNotesCounts(counts)
+
     setTickets(ticketRows || [])
     setLoading(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,17 +130,6 @@ export default function Reports() {
     return buckets
   }, [invoices])
 
-  // ---- Per-project rollup: current completion snapshot + invoiced-in-range ----
-  const taskCountsByProject = useMemo(() => {
-    const counts = {}
-    for (const t of tasks) {
-      counts[t.project_id] ??= { done: 0, total: 0 }
-      counts[t.project_id].total += 1
-      if (t.status === 'done') counts[t.project_id].done += 1
-    }
-    return counts
-  }, [tasks])
-
   const invoicedByProject = useMemo(() => {
     const map = {}
     for (const inv of invoices) {
@@ -121,6 +148,73 @@ export default function Reports() {
     }
     return bucket
   }, [invoices])
+
+  // ---- Task grouping + visibility ----
+  const taskAssigneesByTaskId = useMemo(() => {
+    const map = {}
+    for (const row of taskAssignees) {
+      map[row.task_id] ??= []
+      map[row.task_id].push({ user_id: row.user_id, role_label: row.role_label, full_name: row.profiles?.full_name })
+    }
+    return map
+  }, [taskAssignees])
+
+  const membersById = useMemo(() => {
+    const map = {}
+    for (const m of members) map[m.id] = m.full_name
+    return map
+  }, [members])
+
+  const isTaskVisible = useCallback((task) => {
+    if (isAdmin) return true
+    if (!user) return false
+    if (task.assignee_id === user.id) return true
+    return (taskAssigneesByTaskId[task.id] || []).some((a) => a.user_id === user.id)
+  }, [isAdmin, user, taskAssigneesByTaskId])
+
+  const getAssigneeDisplay = useCallback((task) => {
+    const names = []
+    if (task.assignee_id) names.push(membersById[task.assignee_id] || 'Member')
+    for (const a of (taskAssigneesByTaskId[task.id] || [])) {
+      if (a.user_id === task.assignee_id) continue
+      names.push(a.role_label ? `${a.full_name || 'Member'} (${a.role_label})` : (a.full_name || 'Member'))
+    }
+    return names.length > 0 ? names.join(', ') : 'Unassigned'
+  }, [membersById, taskAssigneesByTaskId])
+
+  const visibleTasks = useMemo(() => tasks.filter(isTaskVisible), [tasks, isTaskVisible])
+
+  const tasksByProjectId = useMemo(() => {
+    const map = {}
+    for (const t of visibleTasks) {
+      const key = t.project_id || '__standalone__'
+      map[key] ??= []
+      map[key].push(t)
+    }
+    return map
+  }, [visibleTasks])
+
+  const taskCountsByProject = useMemo(() => {
+    // Counts for the Scrubber always reflect the WHOLE project (every
+    // member's tasks), even for a non-admin whose drill-down list below is
+    // filtered to just their own — otherwise the progress bar would look
+    // wrong/inconsistent with reality.
+    const counts = {}
+    for (const t of tasks) {
+      counts[t.project_id] ??= { done: 0, total: 0 }
+      counts[t.project_id].total += 1
+      if (t.status === 'done') counts[t.project_id].done += 1
+    }
+    return counts
+  }, [tasks])
+
+  const groupTasksByStatus = (list) => {
+    const groups = { todo: [], in_progress: [], done: [] }
+    for (const t of list) groups[t.status]?.push(t)
+    return groups
+  }
+
+  const standaloneTasks = tasksByProjectId['__standalone__'] || []
 
   // ---- Ticket activity ----
   const ticketStats = useMemo(() => {
@@ -143,6 +237,10 @@ export default function Reports() {
   }, [tickets, range.start, range.end])
 
   const currencies = Object.keys(financialByCurrency)
+
+  const toggleProject = (projectId) => {
+    setExpandedProjects((prev) => ({ ...prev, [projectId]: !prev[projectId] }))
+  }
 
   const handleExportInvoicesCSV = () => {
     downloadCSV('invoices.csv', invoices.map((inv) => ({
@@ -172,6 +270,61 @@ export default function Reports() {
     }))
   }
 
+  const handleExportTasksCSV = () => {
+    const projectNameById = {}
+    for (const p of projects) projectNameById[p.id] = p.name
+    downloadCSV('tasks.csv', visibleTasks.map((t) => ({
+      project: t.project_id ? (projectNameById[t.project_id] || '') : 'Standalone',
+      title: t.title,
+      status: t.status,
+      start_date: t.start_date || '',
+      due_date: t.due_date || '',
+      assigned_to: getAssigneeDisplay(t),
+      notes: notesCounts[t.id] || 0,
+    })))
+  }
+
+  const renderTaskRow = (task) => (
+    <li key={task.id}>
+      <Link
+        to={`/tasks/${task.id}`}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 hover:shadow-sm transition-shadow text-sm"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <span className="min-w-0 truncate underline flex-shrink-0" style={{ maxWidth: '220px' }}>{task.title}</span>
+        <span style={{ color: 'var(--ink-muted)' }} className="text-xs truncate">{getAssigneeDisplay(task)}</span>
+        {task.start_date && <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>from {new Date(task.start_date).toLocaleDateString()}</span>}
+        {task.due_date && <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>due {new Date(task.due_date).toLocaleDateString()}</span>}
+        {notesCounts[task.id] > 0 && (
+          <span className="text-xs font-mono rounded-full px-2 py-0.5" style={{ background: 'var(--panel-sunken)', color: 'var(--ink-muted)' }}>
+            {notesCounts[task.id]} note{notesCounts[task.id] === 1 ? '' : 's'}
+          </span>
+        )}
+      </Link>
+    </li>
+  )
+
+  const renderStatusGroups = (list) => {
+    const groups = groupTasksByStatus(list)
+    if (list.length === 0) {
+      return <p className="text-sm py-2" style={{ color: 'var(--ink-muted)' }}>No tasks{!isAdmin ? ' assigned to you' : ''} here.</p>
+    }
+    return (
+      <div className="space-y-4 mt-2">
+        {STATUS_GROUPS.map((g) => (
+          groups[g.key].length > 0 && (
+            <div key={g.key}>
+              <p className="text-xs font-mono uppercase tracking-wide mb-1.5" style={{ color: 'var(--ink-muted)' }}>
+                {g.label} · {groups[g.key].length}
+              </p>
+              <ul className="space-y-1.5">{groups[g.key].map(renderTaskRow)}</ul>
+            </div>
+          )
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="print:hidden flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -190,7 +343,7 @@ export default function Reports() {
         </button>
       </div>
 
-      <div className="print:hidden flex items-center gap-2 mb-6 flex-wrap">
+      <div className="print:hidden flex items-center gap-2 mb-4 flex-wrap">
         {RANGE_PRESETS.map((p) => (
           <button
             key={p.key}
@@ -214,12 +367,32 @@ export default function Reports() {
         )}
       </div>
 
+      <div className="print:hidden flex items-center gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className="text-sm px-3 py-2.5 border-b-2 transition-colors"
+            style={{
+              borderColor: activeTab === tab.key ? 'var(--ink)' : 'transparent',
+              color: activeTab === tab.key ? 'var(--ink)' : 'var(--ink-muted)',
+              fontWeight: activeTab === tab.key ? 500 : 400,
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Print-only letterhead */}
       <div className="hidden print:block mb-6">
         <p className="font-display font-bold text-xl">{activeOrg?.name}</p>
         <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>
           Report for {formatRangeLabel(range.start, range.end)} — generated {new Date().toLocaleDateString()}
         </p>
+        {!isAdmin && (
+          <p className="text-xs mt-1" style={{ color: 'var(--ink-muted)' }}>Task lists below are scoped to tasks assigned to you.</p>
+        )}
       </div>
 
       {error && (
@@ -233,7 +406,7 @@ export default function Reports() {
       ) : (
         <div className="space-y-8">
           {/* Financial summary */}
-          <section>
+          <section className={activeTab === 'financial' ? '' : 'hidden print:block'}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-bold text-lg">Financial summary</h2>
               <button onClick={handleExportInvoicesCSV} className="print:hidden text-sm rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
@@ -283,7 +456,7 @@ export default function Reports() {
           </section>
 
           {/* Ticket activity */}
-          <section>
+          <section className={activeTab === 'tickets' ? '' : 'hidden print:block'}>
             <h2 className="font-display font-bold text-lg mb-3">Ticket activity</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
@@ -331,13 +504,24 @@ export default function Reports() {
           </section>
 
           {/* Project rollup */}
-          <section>
+          <section className={activeTab === 'projects' ? '' : 'hidden print:block'}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-bold text-lg">Project rollup</h2>
-              <button onClick={handleExportProjectsCSV} className="print:hidden text-sm rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
-                Download CSV
-              </button>
+              <div className="flex gap-2 print:hidden">
+                <button onClick={handleExportTasksCSV} className="text-sm rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                  Download tasks CSV
+                </button>
+                <button onClick={handleExportProjectsCSV} className="text-sm rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                  Download CSV
+                </button>
+              </div>
             </div>
+
+            {!isAdmin && (
+              <p className="text-xs mb-3 print:hidden" style={{ color: 'var(--ink-muted)' }}>
+                Progress bars reflect the whole project; task lists below are scoped to tasks assigned to you.
+              </p>
+            )}
 
             {projects.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No active projects.</p>
@@ -347,6 +531,8 @@ export default function Reports() {
                   const counts = taskCountsByProject[project.id] || { done: 0, total: 0 }
                   const percent = counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0
                   const invoicedEntries = Object.entries(invoicedByProject[project.id] || {})
+                  const projectTasks = tasksByProjectId[project.id] || []
+                  const isExpanded = !!expandedProjects[project.id]
 
                   return (
                     <div key={project.id} className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
@@ -362,12 +548,41 @@ export default function Reports() {
                         </span>
                       </div>
                       <Scrubber percent={percent} tone={project.status === 'completed' ? 'done' : 'progress'} label={`${project.name} progress`} />
-                      <p className="text-xs font-mono mt-1" style={{ color: 'var(--ink-muted)' }}>{counts.done}/{counts.total} tasks done</p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>{counts.done}/{counts.total} tasks done</p>
+                        <button
+                          onClick={() => toggleProject(project.id)}
+                          className="text-xs font-mono uppercase tracking-wide print:hidden"
+                          style={{ color: 'var(--tally-progress)' }}
+                        >
+                          {isExpanded ? 'Hide tasks' : `Show tasks (${projectTasks.length})`}
+                        </button>
+                      </div>
+                      <div className={isExpanded ? '' : 'hidden print:block'}>
+                        {renderStatusGroups(projectTasks)}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             )}
+
+            {/* Standalone tasks */}
+            <div className="rounded-lg border p-4 mt-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-sm">Standalone tasks</span>
+                <button
+                  onClick={() => setStandaloneExpanded((v) => !v)}
+                  className="text-xs font-mono uppercase tracking-wide print:hidden"
+                  style={{ color: 'var(--tally-progress)' }}
+                >
+                  {standaloneExpanded ? 'Hide tasks' : `Show tasks (${standaloneTasks.length})`}
+                </button>
+              </div>
+              <div className={standaloneExpanded ? '' : 'hidden print:block'}>
+                {renderStatusGroups(standaloneTasks)}
+              </div>
+            </div>
           </section>
         </div>
       )}
