@@ -105,16 +105,36 @@ public/
 - No new tables — Reports is a read-only lens over projects, tasks,
   invoices, and tickets, scoped to a date range (This month / Last month /
   This quarter / This year / All time / custom).
+- **Organized into three tabs** — Financial summary, Ticket activity,
+  Project rollup — shown one at a time on screen. **Print / Save as PDF**
+  always includes all three regardless of which tab is open; the tabs are
+  just a browsing convenience, not a way to leave something out of the PDF.
 - **Financial summary** groups invoice totals by currency (never summed
   across currencies, since PHP + USD isn't a real number) — invoiced, paid,
   outstanding, and overdue for the period.
 - **Ticket activity** shows filed vs. resolved counts for the period, what's
   still open right now, and average resolution time.
 - **Project rollup** shows every active project's current completion
-  (Scrubber again) alongside what got invoiced against it in the period —
-  a snapshot of health plus period activity in one row.
+  (Scrubber again) alongside what got invoiced against it in the period,
+  **plus a "Show tasks" drill-down** revealing that project's tasks
+  grouped into To do / In progress / Completed. Each task row shows its
+  assignee(s), start/due dates, and a notes count — the task title links
+  straight to its own page for the full notes thread and everything else.
+  **Standalone tasks** (not tied to any project) get their own section
+  with the same treatment.
+- **Team members only see their own tasks in the drill-down** — the
+  project's overall progress bar still reflects everyone's work (so it
+  doesn't look wrong), but the task list underneath is filtered to tasks
+  assigned to that person, either as the primary assignee or via the
+  richer multi-assignee list. Admins/owners see everyone's tasks.
+  **Worth being precise about what this is and isn't:** this is a
+  relevance filter for the report view, not a data-privacy boundary — the
+  underlying task data is already visible to any org member who opens the
+  project directly (same as everywhere else in the app; RLS here is
+  org-wide, not per-assignee). It just keeps the report focused on what's
+  relevant to whoever's looking at it.
 - **Print / Save as PDF** for a clean handoff document; **Download CSV** on
-  the invoices and project tables for spreadsheet work.
+  the invoices, project, and task tables for spreadsheet work.
 
 ## How ticketing works
 
@@ -296,6 +316,11 @@ not.
 - One page, pulling every task assigned to you specifically, across every
   project in the current workspace — sorted by due date, overdue ones
   flagged the same way they are elsewhere in the app.
+- **"Assigned to you" means either way a task can be assigned** — the
+  simple primary assignee, or being added to the richer multi-assignee
+  list (with a role label) on the task's own page. The two are tracked
+  independently; this page checks both, so a task you're only in via the
+  richer list still shows up here.
 - Status can be changed right from this list (tap the dot to cycle
   todo → in progress → done), same as on a project page — no need to open
   the project just to mark something done.

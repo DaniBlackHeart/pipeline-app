@@ -271,9 +271,13 @@ someone by email.
    a shoot day) to see it merge in alongside them.
 7. Go to **Tickets → New ticket**, file something with a priority and type,
    then open it and post a comment to see the discussion thread.
-8. Go to **Reports** — everything you just created rolls up automatically.
-   Switch the date range, then try **Print / Save as PDF** and **Download
-   CSV** on the invoices table.
+8. Go to **Reports** — everything you just created rolls up automatically,
+   organized into three tabs (Financial summary / Ticket activity / Project
+   rollup). In Project rollup, click **"Show tasks"** on a project to see
+   its tasks grouped by status, and check the **Standalone tasks** section
+   below the project list too. Switch the date range, then try **Print /
+   Save as PDF** (includes all three tabs regardless of which is open) and
+   **Download CSV** on the invoices, project, and task tables.
 9. Go to **Invoices → Recurring**, set up a template for a retainer client,
    then hit **Generate now** to see it create a real invoice immediately —
    no need to wait for the digest job.
@@ -352,6 +356,12 @@ someone by email.
   created** through a dedicated form field yet — these show on the project
   page but aren't independently editable there the way status is. Worth
   adding if you find yourself needing to correct one after the fact.
+- **Reports' per-member task filtering is a relevance view, not a security
+  boundary.** A non-admin's Report page shows only their own tasks in the
+  drill-down, but the underlying task data is still visible to any org
+  member who opens the project directly — same org-wide RLS as everywhere
+  else in the app. Don't rely on this to keep task details private between
+  team members; it isn't designed to.
 - **The email digest is still daily, not instant** — if you're not actively
   in the app, a comment posted at 9am still won't reach your inbox until
   that day's digest run. The notification bell (above) closes this gap
