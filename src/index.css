@@ -48,6 +48,7 @@ body {
 }
 
 @media print {
+  @page { margin: 0; }
   body { background: #fff; }
   a { color: inherit; text-decoration: underline; }
 }

@@ -89,7 +89,7 @@ export default function AppShell({ children }) {
         ))}
       </nav>
 
-      <main className="flex-1 px-4 sm:px-6 py-6 max-w-5xl w-full mx-auto print:max-w-none print:p-0">
+      <main className="flex-1 px-4 sm:px-6 py-6 max-w-5xl w-full mx-auto print:max-w-none print:p-8">
         {children}
       </main>
     </div>

@@ -122,7 +122,7 @@ export default function InvoiceDetail() {
       <div className="rounded-lg border p-8 print:border-0 print:rounded-none print:p-0" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
         <div className="flex justify-between items-start mb-8 flex-wrap gap-4">
           <div>
-            <p className="font-display font-bold text-2xl">{org?.name || 'Invoice'}</p>
+            <p className="font-display font-bold text-2xl tracking-wide">PMA</p>
           </div>
           <div className="text-right">
             <p className="font-mono text-lg font-medium">{invoice.invoice_number}</p>
