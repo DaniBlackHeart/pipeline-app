@@ -12,7 +12,8 @@ const emptyItem = () => ({ id: nextTempId(), description: '', quantity: 1, rate:
 export default function InvoiceForm() {
   const { invoiceId } = useParams()
   const isEditing = Boolean(invoiceId)
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
   const navigate = useNavigate()
 
   const [projects, setProjects] = useState([])
@@ -185,6 +186,17 @@ export default function InvoiceForm() {
   }
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
+
+  if (!isEditing && !isAdmin) {
+    return (
+      <div>
+        <p className="text-sm mb-3" style={{ color: 'var(--tally-alert)' }}>
+          Only admins can create new invoices.
+        </p>
+        <Link to="/invoices" className="text-sm underline">Back to invoices</Link>
+      </div>
+    )
+  }
 
   return (
     <div>

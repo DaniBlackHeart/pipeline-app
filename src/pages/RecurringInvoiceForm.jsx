@@ -11,7 +11,8 @@ const emptyItem = () => ({ id: nextTempId(), description: '', quantity: 1, rate:
 export default function RecurringInvoiceForm() {
   const { templateId } = useParams()
   const isEditing = Boolean(templateId)
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
   const navigate = useNavigate()
 
   const [projects, setProjects] = useState([])
@@ -154,6 +155,17 @@ export default function RecurringInvoiceForm() {
   }
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
+
+  if (!isEditing && !isAdmin) {
+    return (
+      <div>
+        <p className="text-sm mb-3" style={{ color: 'var(--tally-alert)' }}>
+          Only admins can create new recurring invoices.
+        </p>
+        <Link to="/invoices/recurring" className="text-sm underline">Back to recurring invoices</Link>
+      </div>
+    )
+  }
 
   return (
     <div>

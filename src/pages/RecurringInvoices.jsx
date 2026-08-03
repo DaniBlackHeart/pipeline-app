@@ -7,7 +7,8 @@ import { formatMoney } from '../lib/currency'
 const INTERVAL_LABELS = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
 
 export default function RecurringInvoices() {
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
   const [templates, setTemplates] = useState([])
   const [totalsByTemplate, setTotalsByTemplate] = useState({})
   const [loading, setLoading] = useState(true)
@@ -85,13 +86,15 @@ export default function RecurringInvoices() {
             For retainer clients — set it up once, generate each period with one click (or fully automate it, see SETUP.md).
           </p>
         </div>
-        <Link
-          to="/invoices/recurring/new"
-          className="rounded-md px-4 py-2 text-sm font-medium flex-shrink-0"
-          style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-        >
-          + New recurring invoice
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/invoices/recurring/new"
+            className="rounded-md px-4 py-2 text-sm font-medium flex-shrink-0"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            + New recurring invoice
+          </Link>
+        )}
       </div>
 
       {error && (
@@ -111,15 +114,19 @@ export default function RecurringInvoices() {
         <div className="rounded-lg border border-dashed p-10 text-center" style={{ borderColor: 'var(--border)' }}>
           <p className="font-display font-bold text-lg mb-1">No recurring invoices yet</p>
           <p className="text-sm mb-5" style={{ color: 'var(--ink-muted)' }}>
-            Set one up for a retainer client and stop re-entering the same invoice every month.
+            {isAdmin
+              ? 'Set one up for a retainer client and stop re-entering the same invoice every month.'
+              : 'None have been set up yet.'}
           </p>
-          <Link
-            to="/invoices/recurring/new"
-            className="inline-block rounded-md px-4 py-2 text-sm font-medium"
-            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-          >
-            + New recurring invoice
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/invoices/recurring/new"
+              className="inline-block rounded-md px-4 py-2 text-sm font-medium"
+              style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+            >
+              + New recurring invoice
+            </Link>
+          )}
         </div>
       ) : (
         <ul className="space-y-2">
@@ -162,14 +169,16 @@ export default function RecurringInvoices() {
                     >
                       Edit
                     </Link>
-                    <button
-                      onClick={() => handleGenerateNow(template.id)}
-                      disabled={generatingId === template.id || !template.active}
-                      className="text-xs rounded-md px-3 py-1.5 font-medium disabled:opacity-60"
-                      style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-                    >
-                      {generatingId === template.id ? 'Generating…' : 'Generate now'}
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleGenerateNow(template.id)}
+                        disabled={generatingId === template.id || !template.active}
+                        className="text-xs rounded-md px-3 py-1.5 font-medium disabled:opacity-60"
+                        style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+                      >
+                        {generatingId === template.id ? 'Generating…' : 'Generate now'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </li>

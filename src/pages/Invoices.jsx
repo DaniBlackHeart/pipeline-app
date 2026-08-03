@@ -13,7 +13,8 @@ function deriveDisplayStatus(invoice) {
 }
 
 export default function Invoices() {
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -73,13 +74,15 @@ export default function Invoices() {
           >
             Recurring
           </Link>
-          <Link
-            to="/invoices/new"
-            className="rounded-md px-4 py-2 text-sm font-medium"
-            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-          >
-            + New invoice
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/invoices/new"
+              className="rounded-md px-4 py-2 text-sm font-medium"
+              style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+            >
+              + New invoice
+            </Link>
+          )}
         </div>
       </div>
 
@@ -127,9 +130,11 @@ export default function Invoices() {
         <div className="rounded-lg border border-dashed p-10 text-center" style={{ borderColor: 'var(--border)' }}>
           <p className="font-display font-bold text-lg mb-1">No invoices here</p>
           <p className="text-sm mb-5" style={{ color: 'var(--ink-muted)' }}>
-            {filter === 'all' ? 'Create your first invoice to get started.' : 'Try a different filter.'}
+            {filter === 'all'
+              ? (isAdmin ? 'Create your first invoice to get started.' : 'No invoices have been created yet.')
+              : 'Try a different filter.'}
           </p>
-          {filter === 'all' && (
+          {filter === 'all' && isAdmin && (
             <Link
               to="/invoices/new"
               className="inline-block rounded-md px-4 py-2 text-sm font-medium"
