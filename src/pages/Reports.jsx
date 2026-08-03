@@ -238,6 +238,11 @@ export default function Reports() {
 
   const currencies = Object.keys(financialByCurrency)
 
+  // Non-admins only ever see the Project rollup (scoped to their own tasks) —
+  // no Financial summary, no Ticket activity. Derived rather than stored so
+  // there's no race with activeOrg's role loading in async.
+  const effectiveTab = isAdmin ? activeTab : 'projects'
+
   const toggleProject = (projectId) => {
     setExpandedProjects((prev) => ({ ...prev, [projectId]: !prev[projectId] }))
   }
@@ -332,7 +337,7 @@ export default function Reports() {
         <div>
           <h1 className="font-display font-bold text-2xl tracking-tight">Reports</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--ink-muted)' }}>
-            {formatRangeLabel(range.start, range.end)}
+            {isAdmin ? formatRangeLabel(range.start, range.end) : 'Tasks assigned to you'}
           </p>
         </div>
         <button
@@ -344,6 +349,7 @@ export default function Reports() {
         </button>
       </div>
 
+      {isAdmin && (
       <div className="print:hidden flex items-center gap-2 mb-4 flex-wrap">
         {RANGE_PRESETS.map((p) => (
           <button
@@ -367,23 +373,26 @@ export default function Reports() {
           </span>
         )}
       </div>
+      )}
 
-      <div className="print:hidden flex items-center gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className="text-sm px-3 py-2.5 border-b-2 transition-colors"
-            style={{
-              borderColor: activeTab === tab.key ? 'var(--ink)' : 'transparent',
-              color: activeTab === tab.key ? 'var(--ink)' : 'var(--ink-muted)',
-              fontWeight: activeTab === tab.key ? 500 : 400,
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {isAdmin && (
+        <div className="print:hidden flex items-center gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="text-sm px-3 py-2.5 border-b-2 transition-colors"
+              style={{
+                borderColor: activeTab === tab.key ? 'var(--ink)' : 'transparent',
+                color: activeTab === tab.key ? 'var(--ink)' : 'var(--ink-muted)',
+                fontWeight: activeTab === tab.key ? 500 : 400,
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Print-only letterhead */}
       <div className="hidden print:block mb-6">
@@ -406,8 +415,9 @@ export default function Reports() {
         <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading report…</p>
       ) : (
         <div className="space-y-8">
-          {/* Financial summary */}
-          <section className={activeTab === 'financial' ? '' : 'hidden print:block'}>
+          {/* Financial summary — admins only */}
+          {isAdmin && (
+          <section className={effectiveTab === 'financial' ? '' : 'hidden print:block'}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-bold text-lg">Financial summary</h2>
               <button onClick={handleExportInvoicesCSV} className="print:hidden text-sm rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
@@ -455,9 +465,11 @@ export default function Reports() {
               </div>
             )}
           </section>
+          )}
 
-          {/* Ticket activity */}
-          <section className={activeTab === 'tickets' ? '' : 'hidden print:block'}>
+          {/* Ticket activity — admins only */}
+          {isAdmin && (
+          <section className={effectiveTab === 'tickets' ? '' : 'hidden print:block'}>
             <h2 className="font-display font-bold text-lg mb-3">Ticket activity</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
@@ -503,9 +515,10 @@ export default function Reports() {
               </div>
             )}
           </section>
+          )}
 
           {/* Project rollup */}
-          <section className={activeTab === 'projects' ? '' : 'hidden print:block'}>
+          <section className={effectiveTab === 'projects' ? '' : 'hidden print:block'}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-display font-bold text-lg">Project rollup</h2>
               <div className="flex gap-2 print:hidden">
