@@ -292,6 +292,7 @@ export default function Reports() {
         style={{ borderColor: 'var(--border)' }}
       >
         <span className="min-w-0 truncate underline flex-shrink-0" style={{ maxWidth: '220px' }}>{task.title}</span>
+        <TallyDot status={task.status} />
         <span style={{ color: 'var(--ink-muted)' }} className="text-xs truncate">{getAssigneeDisplay(task)}</span>
         {task.start_date && <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>from {new Date(task.start_date).toLocaleDateString()}</span>}
         {task.due_date && <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>due {new Date(task.due_date).toLocaleDateString()}</span>}
