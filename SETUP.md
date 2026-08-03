@@ -271,13 +271,18 @@ someone by email.
    a shoot day) to see it merge in alongside them.
 7. Go to **Tickets → New ticket**, file something with a priority and type,
    then open it and post a comment to see the discussion thread.
-8. Go to **Reports** — everything you just created rolls up automatically,
-   organized into three tabs (Financial summary / Ticket activity / Project
-   rollup). In Project rollup, click **"Show tasks"** on a project to see
-   its tasks grouped by status, and check the **Standalone tasks** section
-   below the project list too. Switch the date range, then try **Print /
-   Save as PDF** (includes all three tabs regardless of which is open) and
-   **Download CSV** on the invoices, project, and task tables.
+8. Go to **Reports** — as an admin/owner you get everything you just
+   created rolled up automatically, organized into three tabs (Financial
+   summary / Ticket activity / Project rollup) plus a date-range picker
+   that scopes the first two. In Project rollup, click **"Show tasks"** on
+   a project to see its tasks grouped by status, each with a status badge,
+   assignee(s), dates, and a notes count; check the **Standalone tasks**
+   section below the project list too. Try **Print / Save as PDF**
+   (includes all three tabs regardless of which is open) and **Download
+   CSV** on the invoices, project, and task tables. Log in as a non-admin
+   team member and check Reports again — they land straight on Project
+   rollup scoped to their own tasks, with no tabs, date-range picker, or
+   financial/ticket data shown at all.
 9. Go to **Invoices → Recurring**, set up a template for a retainer client,
    then hit **Generate now** to see it create a real invoice immediately —
    no need to wait for the digest job.

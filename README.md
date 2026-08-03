@@ -103,12 +103,19 @@ public/
 ## How reports work
 
 - No new tables — Reports is a read-only lens over projects, tasks,
-  invoices, and tickets, scoped to a date range (This month / Last month /
-  This quarter / This year / All time / custom).
-- **Organized into three tabs** — Financial summary, Ticket activity,
-  Project rollup — shown one at a time on screen. **Print / Save as PDF**
-  always includes all three regardless of which tab is open; the tabs are
-  just a browsing convenience, not a way to leave something out of the PDF.
+  invoices, and tickets.
+- **Admins/owners get three tabs** — Financial summary, Ticket activity,
+  Project rollup — shown one at a time on screen, plus a date-range picker
+  (This month / Last month / This quarter / This year / All time / custom)
+  that scopes the Financial summary and Ticket activity numbers. **Print /
+  Save as PDF** always includes all three tabs regardless of which one is
+  open; the tabs are just a browsing convenience, not a way to leave
+  something out of the PDF.
+- **Team members (non-admins) only ever see the Project rollup** — no
+  Financial summary tab, no Ticket activity tab, and no date-range picker
+  (the picker only ever affected those other two, so showing it would just
+  be a control that does nothing for a member view). The page header reads
+  "Tasks assigned to you" instead of a date range.
 - **Financial summary** groups invoice totals by currency (never summed
   across currencies, since PHP + USD isn't a real number) — invoiced, paid,
   outstanding, and overdue for the period.
@@ -117,11 +124,11 @@ public/
 - **Project rollup** shows every active project's current completion
   (Scrubber again) alongside what got invoiced against it in the period,
   **plus a "Show tasks" drill-down** revealing that project's tasks
-  grouped into To do / In progress / Completed. Each task row shows its
-  assignee(s), start/due dates, and a notes count — the task title links
-  straight to its own page for the full notes thread and everything else.
-  **Standalone tasks** (not tied to any project) get their own section
-  with the same treatment.
+  grouped into To do / In progress / Completed. Each task row shows an
+  explicit status badge, its assignee(s), start/due dates, and a notes
+  count — the task title links straight to its own page for the full
+  notes thread and everything else. **Standalone tasks** (not tied to any
+  project) get their own section with the same treatment.
 - **Team members only see their own tasks in the drill-down** — the
   project's overall progress bar still reflects everyone's work (so it
   doesn't look wrong), but the task list underneath is filtered to tasks
@@ -131,10 +138,13 @@ public/
   relevance filter for the report view, not a data-privacy boundary — the
   underlying task data is already visible to any org member who opens the
   project directly (same as everywhere else in the app; RLS here is
-  org-wide, not per-assignee). It just keeps the report focused on what's
-  relevant to whoever's looking at it.
+  org-wide, not per-assignee, and the Financial summary/Ticket activity
+  data is still fetched behind the scenes for a non-admin, just not
+  rendered). It just keeps the report focused on what's relevant to
+  whoever's looking at it.
 - **Print / Save as PDF** for a clean handoff document; **Download CSV** on
-  the invoices, project, and task tables for spreadsheet work.
+  the invoices, project, and task tables for spreadsheet work (visible to
+  whichever tabs/sections that role can see).
 
 ## How ticketing works
 
