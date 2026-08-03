@@ -67,7 +67,11 @@ through or you're not sure whether it already ran, just run it again.
     doesn't need this — every existing project gets one automatically
     (backfilled from its creation date), so only client name and due date
     need manual review. Once the preview is clear, run the rest of the file.
-19. Go to **Project Settings → API**. Copy:
+19. Then paste and run `supabase/schema_invoice_admin_gate.sql` (makes
+    creating a brand-new invoice or recurring template admin/owner only;
+    viewing and editing existing ones is unaffected). Needs nothing beyond
+    running the SQL.
+20. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -79,7 +83,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-20. (Optional, recommended for real use) Under **Authentication → Providers →
+21. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -261,11 +265,14 @@ someone by email.
 4. Go to **Settings**, paste in your Wise Business permanent payment link
    (grab it from Wise → Payments → "Your open link"). This is a one-time
    setup — every invoice you create from here on will show it automatically.
-5. Go to **Invoices → New invoice**, fill in a client, their email (now
-   required), pick whether it's for a project or a specific task (also
-   required — you'll need at least one project or task created already),
-   and a couple of line items, then save. Open it and hit **Print / Save
-   as PDF** to see the client-facing version with the payment link embedded.
+5. Go to **Invoices → New invoice** (admin/owner only — a non-admin won't
+   see this button, and the form itself blocks direct navigation too),
+   fill in a client, their email (now required), pick whether it's for a
+   project or a specific task (also required — you'll need at least one
+   project or task created already), and a couple of line items, then
+   save. Open it and hit **Print / Save as PDF** to see the client-facing
+   version — a placeholder "PMA" brand mark instead of your workspace
+   name, and the payment link embedded.
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
    a shoot day) to see it merge in alongside them.
@@ -283,9 +290,10 @@ someone by email.
    team member and check Reports again — they land straight on Project
    rollup scoped to their own tasks, with no tabs, date-range picker, or
    financial/ticket data shown at all.
-9. Go to **Invoices → Recurring**, set up a template for a retainer client,
-   then hit **Generate now** to see it create a real invoice immediately —
-   no need to wait for the digest job.
+9. Go to **Invoices → Recurring** (also admin/owner only to create or
+   generate from — a non-admin can still view existing templates), set up
+   a template for a retainer client, then hit **Generate now** to see it
+   create a real invoice immediately — no need to wait for the digest job.
 10. Open any project and hit **Copy share link**, then open that link in a
     private/incognito window to see exactly what a client would see (no
     login). Back in the project, **Regenerate link** to see the old one stop
@@ -357,6 +365,12 @@ someone by email.
 - **You need at least one project or task created before you can create an
   invoice at all**, now that a link is mandatory. If your workspace is
   completely empty, create a project or a standalone task first.
+- **Suppressing the browser's print header/footer (date/time, URL, page
+  count) via `@page { margin: 0 }` is a strong Chromium convention, not a
+  guarantee** — confirm it actually disappears on your own browser/OS
+  before handing a printed invoice to a client. If it ever shows up,
+  unchecking "Headers and footers" in the print dialog's more settings
+  removes it for certain.
 - **No editing client name, start date, or due date after a project is
   created** through a dedicated form field yet — these show on the project
   page but aren't independently editable there the way status is. Worth

@@ -182,6 +182,11 @@ public/
 
 ## How invoicing works
 
+- **Viewing is open to every org member; creating a brand-new invoice is
+  admin/owner only** — enforced via RLS on the `invoices` table, not just a
+  hidden button, so it holds for API access too. Editing an existing
+  invoice (status, line items) stays available to any member, same as
+  before — only "start one from scratch" is gated.
 - **Every invoice must link to exactly one of a project or a task** — never
   both, never neither. A project-wide invoice covers everything under that
   project; a task-linked invoice is for one specific piece of work,
@@ -207,11 +212,25 @@ public/
 - Status (draft/sent/paid/cancelled) is tracked per invoice; "overdue" is
   computed automatically in the UI when a sent invoice's due date has passed
   — no separate status to remember to set.
+- **Printed/PDF invoices show a placeholder brand mark ("PMA"), not the
+  workspace name** — a stand-in until a real logo exists; swap the JSX in
+  `InvoiceDetail.jsx` (or wire up an uploaded logo) whenever that's ready.
+  Printing also now suppresses the browser's own header/footer (today's
+  date/time, the page URL, page count) via `@page { margin: 0 }` — this is
+  a strong convention in Chromium browsers, not a hard guarantee, so it's
+  worth confirming on your own setup before relying on it for anything
+  client-facing. If it ever does show up, unchecking "Headers and footers"
+  in the print dialog's more settings removes it for certain.
 
 ## How recurring invoices work
 
 - Built for retainer clients — set up a template once (client, line items,
   cadence) instead of re-entering the same invoice every period.
+- **Same access rule as regular invoices:** any member can view templates
+  and edit an existing one (pause/resume, change line items); only
+  creating a brand-new template, or running "Generate now" on an existing
+  one, is admin/owner only — both ultimately create a real invoice row, so
+  both are gated together, at the RLS/RPC level.
 - **Same requirements as a regular invoice:** a template needs a client
   email and a link to exactly one of a project or a task, same as above —
   otherwise a generated invoice would violate those rules the moment it's
@@ -222,7 +241,9 @@ public/
 - **Full automation is optional**, not required: the same daily digest
   function (below) checks every template's next-run date and auto-generates
   anything due, so once that's deployed you don't have to remember at all.
-  Pause a template any time without deleting it.
+  This path runs with the Supabase service role and is unaffected by the
+  admin-only rule above (a background job has no "current user" to check
+  against). Pause a template any time without deleting it.
 
 ## How client sharing works
 
