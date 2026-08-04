@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { QUICK_ROLES } from '../lib/roles'
 
-const ROLE_LABELS = { owner: 'Owner', admin: 'Admin', member: 'Member' }
+const ROLE_LABELS = { owner: 'Founder', admin: 'Admin', member: 'Member' }
 
 export default function Team() {
   const { activeOrgId, activeOrg, user, session } = useAuth()
@@ -217,7 +218,7 @@ export default function Team() {
                     style={{ borderColor: 'var(--border)' }}
                     aria-label={`Role for ${member.name}`}
                   >
-                    <option value="owner">Owner</option>
+                    <option value="owner">Founder</option>
                     <option value="admin">Admin</option>
                     <option value="member">Member</option>
                   </select>
@@ -242,6 +243,27 @@ export default function Team() {
           })}
         </ul>
       )}
+
+      <div className="rounded-lg border p-5 mt-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <h2 className="font-display font-bold text-lg mb-1">Role suggestions</h2>
+        <p className="text-sm mb-4" style={{ color: 'var(--ink-muted)' }}>
+          Quick picks for the "Role" field wherever someone gets assigned to a project or task — shows up as
+          autocomplete there. Not a locked list; typing something else still works.
+        </p>
+        <ul className="space-y-3">
+          {QUICK_ROLES.map((r) => (
+            <li key={r.title}>
+              <p className="text-sm font-medium">{r.title}</p>
+              {r.description && <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>{r.description}</p>}
+              {r.title === 'Founder' && (
+                <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+                  Not just a label here — set someone's permission level to Founder above and it's the same as Owner.
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
