@@ -364,7 +364,12 @@ not.
   in more than one) changes what shows up here too.
 - Admins/owners see a **"+ New task"** button here — this is where a
   standalone task (not tied to any project) gets created; project-linked
-  tasks are still created from that project's own page as before.
+  tasks are still created from that project's own page as before. The
+  form sets **start date to today by default** (editable, in case you're
+  logging something that actually started earlier) and includes an
+  **"Assigned members" list-builder** — pick a member, an optional role
+  label, hit Add, repeat — so a task can go out fully staffed without a
+  follow-up trip to its own page.
 
 ## How the task detail page works
 
@@ -376,13 +381,16 @@ not just an editable row. What's there:
   inherited automatically. If it's standalone, these become editable
   fields directly on the task — a genuinely separate task with its own
   client info, for work that isn't tied to any specific client project.
-- **Start date, alongside the existing due date.**
+- **Start date, alongside the existing due date.** Both project-linked and
+  standalone tasks get a start date the moment they're created (defaults
+  to that day, editable) — see "How My Tasks works" above.
 - **Assigned members — plural, with optional role labels.** This is
   separate from the simple single-assignee dropdown used in project task
-  rows and My Tasks (that one's unchanged, still the quick way to assign
-  one person). This is the richer list for when a task genuinely needs
-  more than one person — e.g. a graphic designer and a web developer on
-  the same task, each labeled with their role. The two aren't kept in
+  rows and My Tasks (that stays the quick way to set *one* primary
+  person). Both of those forms can now also build up this richer list —
+  pick people, optional roles, Add — right at creation, same as here; this
+  page is just where you'd manage it afterward, or for a task created
+  before this existed. The two aren't kept in
   sync with each other automatically; think of the simple dropdown as
   "who's the main owner" and this list as "who's actually working on it."
 - **Attachments** — the same link/file-upload system already used

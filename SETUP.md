@@ -329,7 +329,11 @@ someone by email.
     Developer"), post a note, and — on a task that has no project — fill
     in client name/website directly on the task. As an admin, try **"+ New
     task"** on My Tasks and leave the project dropdown on "No project
-    (standalone)" to see that flow end to end.
+    (standalone)" to see that flow end to end — notice start date is
+    already filled in with today, and you can add more than one assigned
+    member right there before hitting Create, no follow-up trip to the
+    task's own page required. Same list-builder shows up on a project's
+    own "Add a task" row once you start typing a title.
 18. Open a project's client share link in a private/incognito window (same
     one from earlier) and scroll to **"Have something to raise?"** — submit
     a test ticket. Back in the main app's **Tickets** page, it should show
