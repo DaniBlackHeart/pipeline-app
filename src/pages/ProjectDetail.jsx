@@ -6,6 +6,7 @@ import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
 import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
 import ActivityLog from '../components/ActivityLog'
+import { QUICK_ROLES } from '../lib/roles'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
@@ -325,7 +326,8 @@ export default function ProjectDetail() {
             type="text"
             value={newAssigneeRole}
             onChange={(e) => setNewAssigneeRole(e.target.value)}
-            placeholder="Role (optional), e.g. Video Editor"
+            placeholder="Role (optional) — pick a suggestion or type your own"
+            list="role-suggestions"
             className="rounded-md border px-3 py-2 text-sm flex-1"
             style={{ borderColor: 'var(--border)' }}
           />
@@ -339,6 +341,10 @@ export default function ProjectDetail() {
           </button>
         </form>
       </div>
+
+      <datalist id="role-suggestions">
+        {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
+      </datalist>
 
       {error && (
         <p className="text-sm rounded-md px-3 py-2 mb-4" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
@@ -425,7 +431,8 @@ export default function ProjectDetail() {
                 type="text"
                 value={newTaskMemberRole}
                 onChange={(e) => setNewTaskMemberRole(e.target.value)}
-                placeholder="Role (optional), e.g. Video Editor"
+                placeholder="Role (optional) — pick a suggestion or type your own"
+                list="role-suggestions"
                 className="rounded-md border px-3 py-2 text-sm flex-1"
                 style={{ borderColor: 'var(--border)' }}
               />

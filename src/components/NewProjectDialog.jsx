@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { QUICK_ROLES } from '../lib/roles'
 
 export default function NewProjectDialog({ orgId, onClose, onCreated }) {
   const [name, setName] = useState('')
@@ -225,7 +226,8 @@ export default function NewProjectDialog({ orgId, onClose, onCreated }) {
                 type="text"
                 value={newAssigneeRole}
                 onChange={(e) => setNewAssigneeRole(e.target.value)}
-                placeholder="Role (optional)"
+                placeholder="Role (optional) — pick a suggestion or type your own"
+                list="role-suggestions"
                 className="rounded-md border px-3 py-2 text-sm flex-1"
                 style={{ borderColor: 'var(--border)' }}
               />
@@ -246,6 +248,10 @@ export default function NewProjectDialog({ orgId, onClose, onCreated }) {
               {error}
             </p>
           )}
+
+          <datalist id="role-suggestions">
+            {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
+          </datalist>
 
           <div className="flex gap-3 justify-end pt-2">
             <button
