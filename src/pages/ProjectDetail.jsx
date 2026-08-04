@@ -21,6 +21,9 @@ export default function ProjectDetail() {
   const [error, setError] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskAssignee, setNewTaskAssignee] = useState('')
+  const [newTaskMembers, setNewTaskMembers] = useState([]) // [{ userId, roleLabel }]
+  const [newTaskMemberId, setNewTaskMemberId] = useState('')
+  const [newTaskMemberRole, setNewTaskMemberRole] = useState('')
   const [addingTask, setAddingTask] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [attachmentsTask, setAttachmentsTask] = useState(null)
@@ -74,26 +77,65 @@ export default function ProjectDetail() {
 
   useEffect(() => { load() }, [load])
 
+  const handleAddTaskMember = () => {
+    if (!newTaskMemberId) return
+    setNewTaskMembers((prev) => [...prev, { userId: newTaskMemberId, roleLabel: newTaskMemberRole.trim() || null }])
+    setNewTaskMemberId('')
+    setNewTaskMemberRole('')
+  }
+
+  const handleRemoveTaskMember = (userId) => {
+    setNewTaskMembers((prev) => prev.filter((m) => m.userId !== userId))
+  }
+
   const handleAddTask = async (e) => {
     e.preventDefault()
     if (!newTaskTitle.trim()) return
     setAddingTask(true)
     const { data: userData } = await supabase.auth.getUser()
-    const { error: insertError } = await supabase.from('tasks').insert({
-      project_id: projectId,
-      org_id: activeOrgId,
-      title: newTaskTitle.trim(),
-      assignee_id: newTaskAssignee || null,
-      position: tasks.length,
-      created_by: userData?.user?.id,
-    })
-    setAddingTask(false)
+    const { data: inserted, error: insertError } = await supabase
+      .from('tasks')
+      .insert({
+        project_id: projectId,
+        org_id: activeOrgId,
+        title: newTaskTitle.trim(),
+        assignee_id: newTaskAssignee || null,
+        start_date: new Date().toISOString().slice(0, 10),
+        position: tasks.length,
+        created_by: userData?.user?.id,
+      })
+      .select('id')
+      .single()
     if (insertError) {
+      setAddingTask(false)
       setError(insertError.message)
       return
     }
+    if (newTaskMembers.length > 0) {
+      const { error: memberError } = await supabase.from('task_assignees').insert(
+        newTaskMembers.map((m) => ({
+          task_id: inserted.id,
+          user_id: m.userId,
+          role_label: m.roleLabel,
+          org_id: activeOrgId,
+        }))
+      )
+      if (memberError) {
+        // Task itself was created fine -- don't block on this, just surface
+        // it. Members can still be added from the task page afterward.
+        setError(`Task created, but couldn't add members: ${memberError.message}`)
+        setAddingTask(false)
+        setNewTaskTitle('')
+        setNewTaskAssignee('')
+        setNewTaskMembers([])
+        load()
+        return
+      }
+    }
+    setAddingTask(false)
     setNewTaskTitle('')
     setNewTaskAssignee('')
+    setNewTaskMembers([])
     load()
   }
 
@@ -307,7 +349,8 @@ export default function ProjectDetail() {
       <h2 className="font-display font-bold text-lg mb-3">Tasks</h2>
 
       {isAdmin ? (
-        <form onSubmit={handleAddTask} className="flex gap-2 mb-4 flex-wrap sm:flex-nowrap">
+        <div className="mb-4">
+        <form onSubmit={handleAddTask} className="flex gap-2 mb-2 flex-wrap sm:flex-nowrap">
           <label htmlFor="new-task" className="sr-only">New task title</label>
           <input
             id="new-task"
@@ -340,6 +383,65 @@ export default function ProjectDetail() {
             Add
           </button>
         </form>
+
+        {(newTaskMembers.length > 0 || newTaskTitle.trim()) && (
+          <div className="rounded-md border px-3 py-2.5 mb-2" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs mb-1.5" style={{ color: 'var(--ink-muted)' }}>Assigned members (optional)</p>
+            {newTaskMembers.length > 0 && (
+              <ul className="space-y-1.5 mb-2">
+                {newTaskMembers.map((m) => {
+                  const person = members.find((p) => p.id === m.userId)
+                  return (
+                    <li key={m.userId} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                      <span className="text-sm">
+                        {person?.full_name || 'Member'}
+                        {m.roleLabel && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({m.roleLabel})</span>}
+                      </span>
+                      <button type="button" onClick={() => handleRemoveTaskMember(m.userId)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
+                        Remove
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <label htmlFor="new-task-member" className="sr-only">Add a member</label>
+              <select
+                id="new-task-member"
+                value={newTaskMemberId}
+                onChange={(e) => setNewTaskMemberId(e.target.value)}
+                className="rounded-md border px-3 py-2 text-sm flex-1"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <option value="">Choose a member…</option>
+                {members.filter((m) => !newTaskMembers.some((nm) => nm.userId === m.id)).map((m) => (
+                  <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+                ))}
+              </select>
+              <label htmlFor="new-task-member-role" className="sr-only">Role (optional)</label>
+              <input
+                id="new-task-member-role"
+                type="text"
+                value={newTaskMemberRole}
+                onChange={(e) => setNewTaskMemberRole(e.target.value)}
+                placeholder="Role (optional), e.g. Video Editor"
+                className="rounded-md border px-3 py-2 text-sm flex-1"
+                style={{ borderColor: 'var(--border)' }}
+              />
+              <button
+                type="button"
+                onClick={handleAddTaskMember}
+                disabled={!newTaskMemberId}
+                className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60 flex-shrink-0"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+        </div>
       ) : (
         <p className="text-sm rounded-md px-3 py-2 mb-4" style={{ background: 'var(--panel-sunken)', color: 'var(--ink-muted)' }}>
           Only workspace admins can add new tasks. You can still update status, assignee, and due date below.

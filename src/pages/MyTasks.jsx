@@ -22,6 +22,10 @@ export default function MyTasks() {
   const [newProjectId, setNewProjectId] = useState('')
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [newDueDate, setNewDueDate] = useState('')
+  const [newStartDate, setNewStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [newMembers, setNewMembers] = useState([]) // [{ userId, roleLabel }]
+  const [newMemberId, setNewMemberId] = useState('')
+  const [newMemberRole, setNewMemberRole] = useState('')
   const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
@@ -79,6 +83,17 @@ export default function MyTasks() {
     if (updateError) setError(updateError.message)
   }
 
+  const handleAddMember = () => {
+    if (!newMemberId) return
+    setNewMembers((prev) => [...prev, { userId: newMemberId, roleLabel: newMemberRole.trim() || null }])
+    setNewMemberId('')
+    setNewMemberRole('')
+  }
+
+  const handleRemoveMember = (userId) => {
+    setNewMembers((prev) => prev.filter((m) => m.userId !== userId))
+  }
+
   const handleCreateTask = async (e) => {
     e.preventDefault()
     setError('')
@@ -88,23 +103,56 @@ export default function MyTasks() {
     }
     setCreating(true)
     const { data: userData } = await supabase.auth.getUser()
-    const { error: insertError } = await supabase.from('tasks').insert({
-      org_id: activeOrgId,
-      project_id: newProjectId || null,
-      title: newTitle.trim(),
-      assignee_id: newAssigneeId || null,
-      due_date: newDueDate || null,
-      created_by: userData?.user?.id,
-    })
-    setCreating(false)
+    const { data: inserted, error: insertError } = await supabase
+      .from('tasks')
+      .insert({
+        org_id: activeOrgId,
+        project_id: newProjectId || null,
+        title: newTitle.trim(),
+        assignee_id: newAssigneeId || null,
+        start_date: newStartDate || null,
+        due_date: newDueDate || null,
+        created_by: userData?.user?.id,
+      })
+      .select('id')
+      .single()
     if (insertError) {
+      setCreating(false)
       setError(insertError.message)
       return
     }
+    if (newMembers.length > 0) {
+      const { error: memberError } = await supabase.from('task_assignees').insert(
+        newMembers.map((m) => ({
+          task_id: inserted.id,
+          user_id: m.userId,
+          role_label: m.roleLabel,
+          org_id: activeOrgId,
+        }))
+      )
+      if (memberError) {
+        // Task itself was created fine -- don't block on this, just surface
+        // it. Members can still be added from the task page afterward.
+        setError(`Task created, but couldn't add members: ${memberError.message}`)
+        setCreating(false)
+        setNewTitle('')
+        setNewProjectId('')
+        setNewAssigneeId('')
+        setNewDueDate('')
+        setNewStartDate(new Date().toISOString().slice(0, 10))
+        setNewMembers([])
+        setShowNewTask(false)
+        load()
+        return
+      }
+    }
+    setCreating(false)
     setNewTitle('')
     setNewProjectId('')
     setNewAssigneeId('')
     setNewDueDate('')
+    setNewStartDate(new Date().toISOString().slice(0, 10))
+    setNewMembers([])
     setShowNewTask(false)
     load()
   }
@@ -157,7 +205,7 @@ export default function MyTasks() {
               required
             />
           </div>
-          <div className="grid sm:grid-cols-3 gap-2">
+          <div className="grid sm:grid-cols-2 gap-2">
             <select
               value={newProjectId}
               onChange={(e) => setNewProjectId(e.target.value)}
@@ -176,13 +224,86 @@ export default function MyTasks() {
               <option value="">Unassigned</option>
               {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
             </select>
-            <input
-              type="date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-              className="rounded-md border px-3 py-2 text-sm"
-              style={{ borderColor: 'var(--border)' }}
-            />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="new-task-start" className="text-xs" style={{ color: 'var(--ink-muted)' }}>Start date</label>
+              <input
+                id="new-task-start"
+                type="date"
+                value={newStartDate}
+                onChange={(e) => setNewStartDate(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                style={{ borderColor: 'var(--border)' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-task-due" className="text-xs" style={{ color: 'var(--ink-muted)' }}>Due date</label>
+              <input
+                id="new-task-due"
+                type="date"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                style={{ borderColor: 'var(--border)' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs mb-1.5" style={{ color: 'var(--ink-muted)' }}>Assigned members (optional)</p>
+            {newMembers.length > 0 && (
+              <ul className="space-y-1.5 mb-2">
+                {newMembers.map((m) => {
+                  const person = members.find((p) => p.id === m.userId)
+                  return (
+                    <li key={m.userId} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                      <span className="text-sm">
+                        {person?.full_name || 'Member'}
+                        {m.roleLabel && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({m.roleLabel})</span>}
+                      </span>
+                      <button type="button" onClick={() => handleRemoveMember(m.userId)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
+                        Remove
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <label htmlFor="new-task-member" className="sr-only">Add a member</label>
+              <select
+                id="new-task-member"
+                value={newMemberId}
+                onChange={(e) => setNewMemberId(e.target.value)}
+                className="rounded-md border px-3 py-2 text-sm flex-1"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <option value="">Choose a member…</option>
+                {members.filter((m) => !newMembers.some((nm) => nm.userId === m.id)).map((m) => (
+                  <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+                ))}
+              </select>
+              <label htmlFor="new-task-member-role" className="sr-only">Role (optional)</label>
+              <input
+                id="new-task-member-role"
+                type="text"
+                value={newMemberRole}
+                onChange={(e) => setNewMemberRole(e.target.value)}
+                placeholder="Role (optional), e.g. Graphic Designer"
+                className="rounded-md border px-3 py-2 text-sm flex-1"
+                style={{ borderColor: 'var(--border)' }}
+              />
+              <button
+                type="button"
+                onClick={handleAddMember}
+                disabled={!newMemberId}
+                className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60 flex-shrink-0"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                Add
+              </button>
+            </div>
           </div>
           <div className="flex gap-2 justify-end">
             <button
