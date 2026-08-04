@@ -30,9 +30,7 @@ export default function TaskDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [newAssigneeId, setNewAssigneeId] = useState('')
-  const [newAssigneeRole, setNewAssigneeRole] = useState('')
-  const [addingAssignee, setAddingAssignee] = useState(false)
+  const [savingRole, setSavingRole] = useState('')
 
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
@@ -106,30 +104,44 @@ export default function TaskDetail() {
     navigate(task.project_id ? `/projects/${task.project_id}` : '/my-tasks')
   }
 
-  const handleAddAssignee = async (e) => {
-    e.preventDefault()
-    if (!newAssigneeId) return
-    setAddingAssignee(true)
-    const { error: insertError } = await supabase.from('task_assignees').insert({
-      task_id: taskId,
-      user_id: newAssigneeId,
-      role_label: newAssigneeRole.trim() || null,
-      org_id: activeOrgId,
+  const handleRoleChange = async (role, userId) => {
+    const prevAssignees = assignees
+    setSavingRole(role)
+    setError('')
+    // Optimistic local update first
+    setAssignees((prev) => {
+      const withoutRole = prev.filter((a) => a.role_label !== role)
+      if (!userId) return withoutRole
+      const person = members.find((m) => m.id === userId)
+      return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name } }]
     })
-    setAddingAssignee(false)
-    if (insertError) {
-      setError(insertError.message)
+
+    const { error: deleteError } = await supabase
+      .from('task_assignees')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('role_label', role)
+    if (deleteError) {
+      setError(deleteError.message)
+      setAssignees(prevAssignees)
+      setSavingRole('')
       return
     }
-    setNewAssigneeId('')
-    setNewAssigneeRole('')
-    load()
-  }
-
-  const handleRemoveAssignee = async (userId) => {
-    setAssignees((prev) => prev.filter((a) => a.user_id !== userId))
-    const { error: deleteError } = await supabase.from('task_assignees').delete().eq('task_id', taskId).eq('user_id', userId)
-    if (deleteError) setError(deleteError.message)
+    if (userId) {
+      const { error: insertError } = await supabase.from('task_assignees').insert({
+        task_id: taskId,
+        user_id: userId,
+        role_label: role,
+        org_id: activeOrgId,
+      })
+      if (insertError) {
+        setError(insertError.message)
+        setAssignees(prevAssignees)
+        setSavingRole('')
+        return
+      }
+    }
+    setSavingRole('')
   }
 
   const handlePostComment = async (e) => {
@@ -205,9 +217,6 @@ export default function TaskDetail() {
       </div>
     )
   }
-
-  const assignedUserIds = new Set(assignees.map((a) => a.user_id))
-  const availableMembers = members.filter((m) => !assignedUserIds.has(m.id))
 
   return (
     <div className="max-w-2xl">
@@ -354,60 +363,29 @@ export default function TaskDetail() {
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
         <h2 className="font-display font-bold text-lg mb-3">Assigned members</h2>
-        {assignees.length === 0 ? (
-          <p className="text-sm mb-3" style={{ color: 'var(--ink-muted)' }}>Nobody added yet.</p>
-        ) : (
-          <ul className="space-y-1.5 mb-3">
-            {assignees.map((a) => (
-              <li key={a.user_id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2" style={{ borderColor: 'var(--border)' }}>
-                <span className="text-sm">
-                  {a.profiles?.full_name || 'Member'}
-                  {a.role_label && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({a.role_label})</span>}
-                </span>
-                <button onClick={() => handleRemoveAssignee(a.user_id)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
-                  Remove
-                </button>
+        <ul className="space-y-2">
+          {QUICK_ROLES.map((role) => {
+            const current = assignees.find((a) => a.role_label === role)
+            return (
+              <li key={role} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2" style={{ borderColor: 'var(--border)' }}>
+                <span className="text-sm font-medium flex-shrink-0">{role}</span>
+                <label htmlFor={`role-${role}`} className="sr-only">{role}</label>
+                <select
+                  id={`role-${role}`}
+                  value={current?.user_id || ''}
+                  onChange={(e) => handleRoleChange(role, e.target.value)}
+                  disabled={savingRole === role}
+                  className="rounded-md border px-3 py-2 text-sm disabled:opacity-60"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  <option value="">Choose a member…</option>
+                  {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                </select>
               </li>
-            ))}
-          </ul>
-        )}
-        <form onSubmit={handleAddAssignee} className="flex flex-col sm:flex-row gap-2">
-          <label htmlFor="new-assignee" className="sr-only">Add a member</label>
-          <select
-            id="new-assignee"
-            value={newAssigneeId}
-            onChange={(e) => setNewAssigneeId(e.target.value)}
-            className="rounded-md border px-3 py-2 text-sm flex-1"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <option value="">Choose a member…</option>
-            {availableMembers.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
-          </select>
-          <label htmlFor="new-assignee-role" className="sr-only">Role (optional)</label>
-          <input
-            id="new-assignee-role"
-            type="text"
-            value={newAssigneeRole}
-            onChange={(e) => setNewAssigneeRole(e.target.value)}
-            placeholder="Role (optional) — pick a suggestion or type your own"
-            list="role-suggestions"
-            className="rounded-md border px-3 py-2 text-sm flex-1"
-            style={{ borderColor: 'var(--border)' }}
-          />
-          <button
-            type="submit"
-            disabled={addingAssignee || !newAssigneeId}
-            className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60 flex-shrink-0"
-            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-          >
-            Add
-          </button>
-        </form>
+            )
+          })}
+        </ul>
       </div>
-
-      <datalist id="role-suggestions">
-        {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
-      </datalist>
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
         <h2 className="font-display font-bold text-lg mb-3">Attachments</h2>

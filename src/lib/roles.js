@@ -1,11 +1,8 @@
-// Quick-pick role suggestions for the "Role (optional)" field wherever
-// someone gets assigned to a project or task (project_assignees /
-// task_assignees). These are suggestions, not a locked enum -- the field
-// stays free text (via <datalist>), so a one-off custom label still works.
-export const QUICK_ROLES = [
-  { title: 'Founder', description: '' },
-  { title: 'Account Manager', description: 'Manages client relationships, sales, and overall business strategy.' },
-  { title: 'The Marketing Generalist', description: 'Handles SEO, PPC ad setups, and social media posting.' },
-  { title: 'The Creative All-Rounder', description: 'Creates graphic designs, writes copy, and edits simple videos.' },
-  { title: 'The Full-Stack Developer', description: 'Builds websites, fixes technical bugs, and manages hosting.' },
-]
+// The fixed set of roles a task can have someone assigned to. Used two
+// ways:
+// - Task Assigned Members (creation and the task's own page): one fixed
+//   row per role, each with its own "choose a member" dropdown -- not
+//   free text, not a per-assignment dropdown of its own.
+// - Project Assigned members: still a free-text "Role (optional)" field,
+//   these just show up as <datalist> suggestions there.
+export const QUICK_ROLES = ['Graphics Designer', 'Project Manager', 'Developer']

@@ -22,9 +22,7 @@ export default function ProjectDetail() {
   const [error, setError] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskAssignee, setNewTaskAssignee] = useState('')
-  const [newTaskMembers, setNewTaskMembers] = useState([]) // [{ userId, roleLabel }]
-  const [newTaskMemberId, setNewTaskMemberId] = useState('')
-  const [newTaskMemberRole, setNewTaskMemberRole] = useState('')
+  const [newTaskMemberByRole, setNewTaskMemberByRole] = useState({})
   const [addingTask, setAddingTask] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [attachmentsTask, setAttachmentsTask] = useState(null)
@@ -78,15 +76,8 @@ export default function ProjectDetail() {
 
   useEffect(() => { load() }, [load])
 
-  const handleAddTaskMember = () => {
-    if (!newTaskMemberId) return
-    setNewTaskMembers((prev) => [...prev, { userId: newTaskMemberId, roleLabel: newTaskMemberRole.trim() || null }])
-    setNewTaskMemberId('')
-    setNewTaskMemberRole('')
-  }
-
-  const handleRemoveTaskMember = (userId) => {
-    setNewTaskMembers((prev) => prev.filter((m) => m.userId !== userId))
+  const handleTaskRoleChange = (role, userId) => {
+    setNewTaskMemberByRole((prev) => ({ ...prev, [role]: userId }))
   }
 
   const handleAddTask = async (e) => {
@@ -112,12 +103,13 @@ export default function ProjectDetail() {
       setError(insertError.message)
       return
     }
-    if (newTaskMembers.length > 0) {
+    const membersToAdd = Object.entries(newTaskMemberByRole).filter(([, userId]) => userId)
+    if (membersToAdd.length > 0) {
       const { error: memberError } = await supabase.from('task_assignees').insert(
-        newTaskMembers.map((m) => ({
+        membersToAdd.map(([role, userId]) => ({
           task_id: inserted.id,
-          user_id: m.userId,
-          role_label: m.roleLabel,
+          user_id: userId,
+          role_label: role,
           org_id: activeOrgId,
         }))
       )
@@ -128,7 +120,7 @@ export default function ProjectDetail() {
         setAddingTask(false)
         setNewTaskTitle('')
         setNewTaskAssignee('')
-        setNewTaskMembers([])
+        setNewTaskMemberByRole({})
         load()
         return
       }
@@ -136,7 +128,7 @@ export default function ProjectDetail() {
     setAddingTask(false)
     setNewTaskTitle('')
     setNewTaskAssignee('')
-    setNewTaskMembers([])
+    setNewTaskMemberByRole({})
     load()
   }
 
@@ -343,7 +335,7 @@ export default function ProjectDetail() {
       </div>
 
       <datalist id="role-suggestions">
-        {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
+        {QUICK_ROLES.map((r) => <option key={r} value={r} />)}
       </datalist>
 
       {error && (
@@ -390,62 +382,27 @@ export default function ProjectDetail() {
           </button>
         </form>
 
-        {(newTaskMembers.length > 0 || newTaskTitle.trim()) && (
+        {newTaskTitle.trim() && (
           <div className="rounded-md border px-3 py-2.5 mb-2" style={{ borderColor: 'var(--border)' }}>
             <p className="text-xs mb-1.5" style={{ color: 'var(--ink-muted)' }}>Assigned members (optional)</p>
-            {newTaskMembers.length > 0 && (
-              <ul className="space-y-1.5 mb-2">
-                {newTaskMembers.map((m) => {
-                  const person = members.find((p) => p.id === m.userId)
-                  return (
-                    <li key={m.userId} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
-                      <span className="text-sm">
-                        {person?.full_name || 'Member'}
-                        {m.roleLabel && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({m.roleLabel})</span>}
-                      </span>
-                      <button type="button" onClick={() => handleRemoveTaskMember(m.userId)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
-                        Remove
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <label htmlFor="new-task-member" className="sr-only">Add a member</label>
-              <select
-                id="new-task-member"
-                value={newTaskMemberId}
-                onChange={(e) => setNewTaskMemberId(e.target.value)}
-                className="rounded-md border px-3 py-2 text-sm flex-1"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <option value="">Choose a member…</option>
-                {members.filter((m) => !newTaskMembers.some((nm) => nm.userId === m.id)).map((m) => (
-                  <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
-                ))}
-              </select>
-              <label htmlFor="new-task-member-role" className="sr-only">Role (optional)</label>
-              <input
-                id="new-task-member-role"
-                type="text"
-                value={newTaskMemberRole}
-                onChange={(e) => setNewTaskMemberRole(e.target.value)}
-                placeholder="Role (optional) — pick a suggestion or type your own"
-                list="role-suggestions"
-                className="rounded-md border px-3 py-2 text-sm flex-1"
-                style={{ borderColor: 'var(--border)' }}
-              />
-              <button
-                type="button"
-                onClick={handleAddTaskMember}
-                disabled={!newTaskMemberId}
-                className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60 flex-shrink-0"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                Add
-              </button>
-            </div>
+            <ul className="space-y-1.5">
+              {QUICK_ROLES.map((role) => (
+                <li key={role} className="flex items-center justify-between gap-3 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                  <span className="text-sm font-medium flex-shrink-0">{role}</span>
+                  <label htmlFor={`new-task-role-${role}`} className="sr-only">{role}</label>
+                  <select
+                    id={`new-task-role-${role}`}
+                    value={newTaskMemberByRole[role] || ''}
+                    onChange={(e) => handleTaskRoleChange(role, e.target.value)}
+                    className="rounded-md border px-3 py-2 text-sm"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <option value="">Choose a member…</option>
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                  </select>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         </div>

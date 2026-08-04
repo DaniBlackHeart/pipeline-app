@@ -24,9 +24,7 @@ export default function MyTasks() {
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [newDueDate, setNewDueDate] = useState('')
   const [newStartDate, setNewStartDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [newMembers, setNewMembers] = useState([]) // [{ userId, roleLabel }]
-  const [newMemberId, setNewMemberId] = useState('')
-  const [newMemberRole, setNewMemberRole] = useState('')
+  const [newMemberByRole, setNewMemberByRole] = useState({})
   const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
@@ -84,15 +82,8 @@ export default function MyTasks() {
     if (updateError) setError(updateError.message)
   }
 
-  const handleAddMember = () => {
-    if (!newMemberId) return
-    setNewMembers((prev) => [...prev, { userId: newMemberId, roleLabel: newMemberRole.trim() || null }])
-    setNewMemberId('')
-    setNewMemberRole('')
-  }
-
-  const handleRemoveMember = (userId) => {
-    setNewMembers((prev) => prev.filter((m) => m.userId !== userId))
+  const handleMemberRoleChange = (role, userId) => {
+    setNewMemberByRole((prev) => ({ ...prev, [role]: userId }))
   }
 
   const handleCreateTask = async (e) => {
@@ -122,12 +113,13 @@ export default function MyTasks() {
       setError(insertError.message)
       return
     }
-    if (newMembers.length > 0) {
+    const membersToAdd = Object.entries(newMemberByRole).filter(([, userId]) => userId)
+    if (membersToAdd.length > 0) {
       const { error: memberError } = await supabase.from('task_assignees').insert(
-        newMembers.map((m) => ({
+        membersToAdd.map(([role, userId]) => ({
           task_id: inserted.id,
-          user_id: m.userId,
-          role_label: m.roleLabel,
+          user_id: userId,
+          role_label: role,
           org_id: activeOrgId,
         }))
       )
@@ -141,7 +133,7 @@ export default function MyTasks() {
         setNewAssigneeId('')
         setNewDueDate('')
         setNewStartDate(new Date().toISOString().slice(0, 10))
-        setNewMembers([])
+        setNewMemberByRole({})
         setShowNewTask(false)
         load()
         return
@@ -153,7 +145,7 @@ export default function MyTasks() {
     setNewAssigneeId('')
     setNewDueDate('')
     setNewStartDate(new Date().toISOString().slice(0, 10))
-    setNewMembers([])
+    setNewMemberByRole({})
     setShowNewTask(false)
     load()
   }
@@ -253,59 +245,24 @@ export default function MyTasks() {
 
           <div>
             <p className="text-xs mb-1.5" style={{ color: 'var(--ink-muted)' }}>Assigned members (optional)</p>
-            {newMembers.length > 0 && (
-              <ul className="space-y-1.5 mb-2">
-                {newMembers.map((m) => {
-                  const person = members.find((p) => p.id === m.userId)
-                  return (
-                    <li key={m.userId} className="flex items-center justify-between gap-2 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
-                      <span className="text-sm">
-                        {person?.full_name || 'Member'}
-                        {m.roleLabel && <span className="ml-1.5 text-xs" style={{ color: 'var(--ink-muted)' }}>({m.roleLabel})</span>}
-                      </span>
-                      <button type="button" onClick={() => handleRemoveMember(m.userId)} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
-                        Remove
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <label htmlFor="new-task-member" className="sr-only">Add a member</label>
-              <select
-                id="new-task-member"
-                value={newMemberId}
-                onChange={(e) => setNewMemberId(e.target.value)}
-                className="rounded-md border px-3 py-2 text-sm flex-1"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                <option value="">Choose a member…</option>
-                {members.filter((m) => !newMembers.some((nm) => nm.userId === m.id)).map((m) => (
-                  <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
-                ))}
-              </select>
-              <label htmlFor="new-task-member-role" className="sr-only">Role (optional)</label>
-              <input
-                id="new-task-member-role"
-                type="text"
-                value={newMemberRole}
-                onChange={(e) => setNewMemberRole(e.target.value)}
-                placeholder="Role (optional) — pick a suggestion or type your own"
-                list="role-suggestions"
-                className="rounded-md border px-3 py-2 text-sm flex-1"
-                style={{ borderColor: 'var(--border)' }}
-              />
-              <button
-                type="button"
-                onClick={handleAddMember}
-                disabled={!newMemberId}
-                className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60 flex-shrink-0"
-                style={{ borderColor: 'var(--border)' }}
-              >
-                Add
-              </button>
-            </div>
+            <ul className="space-y-1.5">
+              {QUICK_ROLES.map((role) => (
+                <li key={role} className="flex items-center justify-between gap-3 rounded-md border px-3 py-1.5" style={{ borderColor: 'var(--border)' }}>
+                  <span className="text-sm font-medium flex-shrink-0">{role}</span>
+                  <label htmlFor={`new-task-role-${role}`} className="sr-only">{role}</label>
+                  <select
+                    id={`new-task-role-${role}`}
+                    value={newMemberByRole[role] || ''}
+                    onChange={(e) => handleMemberRoleChange(role, e.target.value)}
+                    className="rounded-md border px-3 py-2 text-sm"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <option value="">Choose a member…</option>
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                  </select>
+                </li>
+              ))}
+            </ul>
           </div>
           <div className="flex gap-2 justify-end">
             <button
@@ -325,10 +282,6 @@ export default function MyTasks() {
               {creating ? 'Creating…' : 'Create task'}
             </button>
           </div>
-
-          <datalist id="role-suggestions">
-            {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
-          </datalist>
         </form>
       )}
 

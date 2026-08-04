@@ -250,7 +250,7 @@ export default function NewProjectDialog({ orgId, onClose, onCreated }) {
           )}
 
           <datalist id="role-suggestions">
-            {QUICK_ROLES.map((r) => <option key={r.title} value={r.title} />)}
+            {QUICK_ROLES.map((r) => <option key={r} value={r} />)}
           </datalist>
 
           <div className="flex gap-3 justify-end pt-2">
