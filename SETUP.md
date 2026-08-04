@@ -68,9 +68,9 @@ through or you're not sure whether it already ran, just run it again.
     (backfilled from its creation date), so only client name and due date
     need manual review. Once the preview is clear, run the rest of the file.
 19. Then paste and run `supabase/schema_invoice_admin_gate.sql` (makes
-    creating a brand-new invoice or recurring template admin/owner only;
-    viewing and editing existing ones is unaffected). Needs nothing beyond
-    running the SQL.
+    invoices and recurring templates read-only for regular members —
+    admins/owners keep full create/edit/delete access; viewing stays open
+    to everyone). Needs nothing beyond running the SQL.
 20. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
@@ -266,13 +266,14 @@ someone by email.
    (grab it from Wise → Payments → "Your open link"). This is a one-time
    setup — every invoice you create from here on will show it automatically.
 5. Go to **Invoices → New invoice** (admin/owner only — a non-admin won't
-   see this button, and the form itself blocks direct navigation too),
-   fill in a client, their email (now required), pick whether it's for a
-   project or a specific task (also required — you'll need at least one
-   project or task created already), and a couple of line items, then
-   save. Open it and hit **Print / Save as PDF** to see the client-facing
-   version — a placeholder "PMA" brand mark instead of your workspace
-   name, and the payment link embedded.
+   see this button, and every invoice is read-only for them, status badge
+   included, once you're logged in as one), fill in a client, their email
+   (now required), pick whether it's for a project or a specific task
+   (also required — you'll need at least one project or task created
+   already), and a couple of line items, then save. Open it and hit
+   **Print / Save as PDF** to see the client-facing version — a
+   placeholder "PMA" brand mark instead of your workspace name, and the
+   payment link embedded.
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
    a shoot day) to see it merge in alongside them.
@@ -290,10 +291,10 @@ someone by email.
    team member and check Reports again — they land straight on Project
    rollup scoped to their own tasks, with no tabs, date-range picker, or
    financial/ticket data shown at all.
-9. Go to **Invoices → Recurring** (also admin/owner only to create or
-   generate from — a non-admin can still view existing templates), set up
-   a template for a retainer client, then hit **Generate now** to see it
-   create a real invoice immediately — no need to wait for the digest job.
+9. Go to **Invoices → Recurring** (also admin/owner only — a non-admin can
+   still see the list of templates, just none of the action buttons), set
+   up a template for a retainer client, then hit **Generate now** to see
+   it create a real invoice immediately — no need to wait for the digest job.
 10. Open any project and hit **Copy share link**, then open that link in a
     private/incognito window to see exactly what a client would see (no
     login). Back in the project, **Regenerate link** to see the old one stop

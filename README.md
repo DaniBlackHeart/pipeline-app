@@ -182,11 +182,13 @@ public/
 
 ## How invoicing works
 
-- **Viewing is open to every org member; creating a brand-new invoice is
-  admin/owner only** — enforced via RLS on the `invoices` table, not just a
-  hidden button, so it holds for API access too. Editing an existing
-  invoice (status, line items) stays available to any member, same as
-  before — only "start one from scratch" is gated.
+- **Invoices are read-only for regular members; admins/owners have full
+  control** — every member can see the list, open any invoice, and print
+  it, but creating a new one, editing an existing one (status, line
+  items), and deleting are all admin/owner only. Enforced via RLS on
+  `invoices` and `invoice_items`, not just hidden buttons, so it holds for
+  API access too. A non-admin viewing an invoice sees its status as a
+  plain badge instead of the editable dropdown.
 - **Every invoice must link to exactly one of a project or a task** — never
   both, never neither. A project-wide invoice covers everything under that
   project; a task-linked invoice is for one specific piece of work,
@@ -226,11 +228,11 @@ public/
 
 - Built for retainer clients — set up a template once (client, line items,
   cadence) instead of re-entering the same invoice every period.
-- **Same access rule as regular invoices:** any member can view templates
-  and edit an existing one (pause/resume, change line items); only
-  creating a brand-new template, or running "Generate now" on an existing
-  one, is admin/owner only — both ultimately create a real invoice row, so
-  both are gated together, at the RLS/RPC level.
+- **Same read-only rule as regular invoices:** any member can view every
+  template, but creating a new one, editing an existing one (line items,
+  pause/resume), and running "Generate now" are all admin/owner only —
+  Generate now included, since it ultimately creates a real invoice row.
+  Enforced at the RLS/RPC level, same as invoices.
 - **Same requirements as a regular invoice:** a template needs a client
   email and a link to exactly one of a project or a task, same as above —
   otherwise a generated invoice would violate those rules the moment it's
