@@ -309,13 +309,15 @@ someone by email.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
 14. Go to **Team** — as the workspace's first (and so far only) member,
-    you're the owner, so you'll see the invite form. If you deployed
-    section 5, try inviting a second email (even one of your own alt
-    addresses) to see the whole flow end to end — once they set a
-    password and log in, they should land directly in your workspace, with
-    no separate empty one of their own and no workspace switcher cluttering
-    the header (it only appears once there's genuinely more than one
-    option to choose from).
+    you're the Founder (same permission tier as Owner, just relabeled — the
+    roster's role dropdown shows "Founder" too), so you'll see the invite
+    form. Scroll down and check the **role suggestions** reference block —
+    the five roles and what each covers. If you deployed section 5, try
+    inviting a second email (even one of your own alt addresses) to see
+    the whole flow end to end — once they set a password and log in, they
+    should land directly in your workspace, with no separate empty one of
+    their own and no workspace switcher cluttering the header (it only
+    appears once there's genuinely more than one option to choose from).
 15. Back on a project, notice the "Add a task" input only appears for
     admins/owners now — everyone else sees a note instead, though they can
     still update status, assignee, and due date on existing tasks. Change a
@@ -325,15 +327,18 @@ someone by email.
     step), then click **My Tasks** in the nav — it should show up there
     too, regardless of which project it's in.
 17. Click any task's title anywhere in the app — it now opens its own
-    page. Try adding a second assignee with a role label (e.g. "Web
-    Developer"), post a note, and — on a task that has no project — fill
-    in client name/website directly on the task. As an admin, try **"+ New
-    task"** on My Tasks and leave the project dropdown on "No project
-    (standalone)" to see that flow end to end — notice start date is
-    already filled in with today, and you can add more than one assigned
-    member right there before hitting Create, no follow-up trip to the
-    task's own page required. Same list-builder shows up on a project's
-    own "Add a task" row once you start typing a title.
+    page. Try adding a second assignee with a role label — start typing in
+    the role field and the five suggestions (Account Manager, The
+    Marketing Generalist, etc.) show up as autocomplete, or just type
+    something custom like "Web Developer" — post a note, and — on a task
+    that has no project — fill in client name/website directly on the
+    task. As an admin, try **"+ New task"** on My Tasks and leave the
+    project dropdown on "No project (standalone)" to see that flow end to
+    end — notice start date is already filled in with today, and you can
+    add more than one assigned member right there before hitting Create,
+    no follow-up trip to the task's own page required. Same list-builder
+    (and the same role suggestions) shows up on a project's own "Add a
+    task" row once you start typing a title.
 18. Open a project's client share link in a private/incognito window (same
     one from earlier) and scroll to **"Have something to raise?"** — submit
     a test ticket. Back in the main app's **Tickets** page, it should show

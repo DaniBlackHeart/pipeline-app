@@ -441,12 +441,26 @@ not just an editable row. What's there:
   link to set a password.
 - **The permission check happens twice, deliberately.** The UI hides the
   invite form from non-admins, but that's just convenience — the real
-  invite form from non-admins, but that's just convenience — the real
   enforcement is in `api/invite-member.js`, which independently verifies
   the caller's own session token and looks up their actual role in that
   workspace before doing anything. A regular member calling the endpoint
   directly (bypassing the UI) would still get rejected, because the check
   doesn't trust anything the client sends about its own permissions.
+- **The Owner permission tier is labeled "Founder" in the UI** — same
+  underlying value (`org_members.role = 'owner'`), same permissions
+  (everything Admin can do, plus can't be removed/demoted like a regular
+  admin can), just relabeled to match how this specific team refers to
+  itself. Setting someone's role to Founder on the Team page *is* making
+  them an owner, not a separate, softer tier.
+- **Five role suggestions show up as autocomplete** on every "Role
+  (optional)" field — project creation, a project's own Assigned members
+  section, task creation, and a task's own Assigned members section:
+  Founder, Account Manager, The Marketing Generalist, The Creative
+  All-Rounder, The Full-Stack Developer (defined once in `src/lib/roles.js`).
+  These are suggestions via a native `<datalist>`, not a locked list — the
+  field stays free text, so a one-off custom label still works exactly as
+  before. The Team page has a small reference block at the bottom listing
+  what each one covers.
 - **Task creation is now admin/owner-only.** Everything else about
   tasks — marking done, reassigning, changing due dates, deleting — stays
   open to every member. Only adding *new* tasks is gated, and it's enforced
