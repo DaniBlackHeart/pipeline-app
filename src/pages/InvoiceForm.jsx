@@ -187,11 +187,11 @@ export default function InvoiceForm() {
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
 
-  if (!isEditing && !isAdmin) {
+  if (!isAdmin) {
     return (
       <div>
         <p className="text-sm mb-3" style={{ color: 'var(--tally-alert)' }}>
-          Only admins can create new invoices.
+          {isEditing ? 'Only admins can edit invoices.' : 'Only admins can create new invoices.'}
         </p>
         <Link to="/invoices" className="text-sm underline">Back to invoices</Link>
       </div>

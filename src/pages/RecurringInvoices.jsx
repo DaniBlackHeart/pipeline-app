@@ -155,20 +155,24 @@ export default function RecurringInvoices() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => toggleActive(template)}
-                      className="text-xs rounded-md border px-2.5 py-1.5"
-                      style={{ borderColor: 'var(--border)' }}
-                    >
-                      {template.active ? 'Pause' : 'Resume'}
-                    </button>
-                    <Link
-                      to={`/invoices/recurring/${template.id}/edit`}
-                      className="text-xs rounded-md border px-2.5 py-1.5"
-                      style={{ borderColor: 'var(--border)' }}
-                    >
-                      Edit
-                    </Link>
+                    {isAdmin && (
+                      <button
+                        onClick={() => toggleActive(template)}
+                        className="text-xs rounded-md border px-2.5 py-1.5"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        {template.active ? 'Pause' : 'Resume'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <Link
+                        to={`/invoices/recurring/${template.id}/edit`}
+                        className="text-xs rounded-md border px-2.5 py-1.5"
+                        style={{ borderColor: 'var(--border)' }}
+                      >
+                        Edit
+                      </Link>
+                    )}
                     {isAdmin && (
                       <button
                         onClick={() => handleGenerateNow(template.id)}

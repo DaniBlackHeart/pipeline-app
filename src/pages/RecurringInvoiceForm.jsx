@@ -156,11 +156,11 @@ export default function RecurringInvoiceForm() {
 
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
 
-  if (!isEditing && !isAdmin) {
+  if (!isAdmin) {
     return (
       <div>
         <p className="text-sm mb-3" style={{ color: 'var(--tally-alert)' }}>
-          Only admins can create new recurring invoices.
+          {isEditing ? 'Only admins can edit recurring invoices.' : 'Only admins can create new recurring invoices.'}
         </p>
         <Link to="/invoices/recurring" className="text-sm underline">Back to recurring invoices</Link>
       </div>

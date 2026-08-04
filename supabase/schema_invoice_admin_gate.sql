@@ -1,8 +1,11 @@
--- Admin-gate the creation of NET-NEW invoices and recurring invoice
--- templates, mirroring the existing task-creation gate (schema_team.sql).
--- Members can still view every invoice/template (unchanged), and can still
--- update an existing one (e.g. marking an invoice paid, editing line
--- items) -- only "create a brand-new invoice/template" is admin-only now.
+-- Admin-gate invoices and recurring invoice templates end-to-end:
+-- creating a brand-new one, AND editing an existing one (status, line
+-- items, pausing/resuming a template), are now both admin/owner only.
+-- Members can still view every invoice/template (unchanged) -- this is
+-- read-only for them now, not "create-gated but editable" as an earlier
+-- version of this file had it. Mirrors the existing task-creation gate
+-- (schema_team.sql), just extended to cover updates too since invoices
+-- are financial records, unlike tasks.
 -- Safe to re-run: every policy is dropped and recreated.
 
 drop policy if exists "org members can create invoices" on public.invoices;
@@ -12,12 +15,68 @@ create policy "org admins can create invoices"
   to authenticated
   with check (public.is_org_admin(org_id));
 
+drop policy if exists "org members can update invoices" on public.invoices;
+drop policy if exists "org admins can update invoices" on public.invoices;
+create policy "org admins can update invoices"
+  on public.invoices for update
+  to authenticated
+  using (public.is_org_admin(org_id));
+
+drop policy if exists "org members can create invoice items" on public.invoice_items;
+drop policy if exists "org admins can create invoice items" on public.invoice_items;
+create policy "org admins can create invoice items"
+  on public.invoice_items for insert
+  to authenticated
+  with check (public.is_org_admin(org_id));
+
+drop policy if exists "org members can update invoice items" on public.invoice_items;
+drop policy if exists "org admins can update invoice items" on public.invoice_items;
+create policy "org admins can update invoice items"
+  on public.invoice_items for update
+  to authenticated
+  using (public.is_org_admin(org_id));
+
+drop policy if exists "org members can delete invoice items" on public.invoice_items;
+drop policy if exists "org admins can delete invoice items" on public.invoice_items;
+create policy "org admins can delete invoice items"
+  on public.invoice_items for delete
+  to authenticated
+  using (public.is_org_admin(org_id));
+
 drop policy if exists "org members can create recurring templates" on public.recurring_invoice_templates;
 drop policy if exists "org admins can create recurring templates" on public.recurring_invoice_templates;
 create policy "org admins can create recurring templates"
   on public.recurring_invoice_templates for insert
   to authenticated
   with check (public.is_org_admin(org_id));
+
+drop policy if exists "org members can update recurring templates" on public.recurring_invoice_templates;
+drop policy if exists "org admins can update recurring templates" on public.recurring_invoice_templates;
+create policy "org admins can update recurring templates"
+  on public.recurring_invoice_templates for update
+  to authenticated
+  using (public.is_org_admin(org_id));
+
+drop policy if exists "org members can create recurring items" on public.recurring_invoice_items;
+drop policy if exists "org admins can create recurring items" on public.recurring_invoice_items;
+create policy "org admins can create recurring items"
+  on public.recurring_invoice_items for insert
+  to authenticated
+  with check (public.is_org_admin(org_id));
+
+drop policy if exists "org members can update recurring items" on public.recurring_invoice_items;
+drop policy if exists "org admins can update recurring items" on public.recurring_invoice_items;
+create policy "org admins can update recurring items"
+  on public.recurring_invoice_items for update
+  to authenticated
+  using (public.is_org_admin(org_id));
+
+drop policy if exists "org members can delete recurring items" on public.recurring_invoice_items;
+drop policy if exists "org admins can delete recurring items" on public.recurring_invoice_items;
+create policy "org admins can delete recurring items"
+  on public.recurring_invoice_items for delete
+  to authenticated
+  using (public.is_org_admin(org_id));
 
 -- generate_invoice_from_template() runs as security definer and bypasses
 -- the invoices insert policy above internally, so it needs its own

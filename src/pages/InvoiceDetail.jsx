@@ -4,10 +4,12 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { formatMoney } from '../lib/currency'
 import ActivityLog from '../components/ActivityLog'
+import TallyDot from '../components/TallyDot'
 
 export default function InvoiceDetail() {
   const { invoiceId } = useParams()
-  const { activeOrgId } = useAuth()
+  const { activeOrgId, activeOrg } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
 
   const [invoice, setInvoice] = useState(null)
   const [items, setItems] = useState([])
@@ -77,25 +79,31 @@ export default function InvoiceDetail() {
       <div className="print:hidden flex items-center justify-between mb-4 flex-wrap gap-3">
         <Link to="/invoices" className="text-sm" style={{ color: 'var(--ink-muted)' }}>&larr; All invoices</Link>
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={invoice.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-xs font-mono uppercase rounded-md border px-2 py-1.5"
-            style={{ borderColor: 'var(--border)' }}
-            aria-label="Invoice status"
-          >
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <Link
-            to={`/invoices/${invoiceId}/edit`}
-            className="text-sm rounded-md border px-3 py-1.5"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            Edit
-          </Link>
+          {isAdmin ? (
+            <select
+              value={invoice.status}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              className="text-xs font-mono uppercase rounded-md border px-2 py-1.5"
+              style={{ borderColor: 'var(--border)' }}
+              aria-label="Invoice status"
+            >
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          ) : (
+            <TallyDot status={isOverdue ? 'overdue' : invoice.status} />
+          )}
+          {isAdmin && (
+            <Link
+              to={`/invoices/${invoiceId}/edit`}
+              className="text-sm rounded-md border px-3 py-1.5"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              Edit
+            </Link>
+          )}
           <button
             onClick={() => window.print()}
             className="text-sm rounded-md px-3 py-1.5"
