@@ -91,10 +91,10 @@ public/
   can't be created without them. Enforced at the database level, not just
   the form, same as the invoice requirements below.
 - **Multiple assigned members, each with an optional role label** (e.g.
-  "Video Editor", "Project Coordinator") — same pattern as task assignees.
-  Add people right at creation time, or later from the project's own page.
-  Adding someone notifies them, same as everywhere else people get added
-  to something in this app.
+  "Video Editor", "Project Coordinator", or one of the three suggested
+  role names — free text either way). Add people right at creation time,
+  or later from the project's own page. Adding someone notifies them,
+  same as everywhere else people get added to something in this app.
 - These rules only apply to *new* projects and only going forward — see
   `schema_project_requirements.sql`'s own header for how existing projects
   (which may predate mandatory client/due dates) are handled without
@@ -366,10 +366,9 @@ not.
   standalone task (not tied to any project) gets created; project-linked
   tasks are still created from that project's own page as before. The
   form sets **start date to today by default** (editable, in case you're
-  logging something that actually started earlier) and includes an
-  **"Assigned members" list-builder** — pick a member, an optional role
-  label, hit Add, repeat — so a task can go out fully staffed without a
-  follow-up trip to its own page.
+  logging something that actually started earlier) and includes the same
+  three fixed **Assigned Members** role slots described below — so a task
+  can go out fully staffed without a follow-up trip to its own page.
 
 ## How the task detail page works
 
@@ -384,15 +383,15 @@ not just an editable row. What's there:
 - **Start date, alongside the existing due date.** Both project-linked and
   standalone tasks get a start date the moment they're created (defaults
   to that day, editable) — see "How My Tasks works" above.
-- **Assigned members — plural, with optional role labels.** This is
+- **Assigned members — three fixed role slots (Graphics Designer, Project
+  Manager, Developer), one "choose a member" dropdown each.** This is
   separate from the simple single-assignee dropdown used in project task
   rows and My Tasks (that stays the quick way to set *one* primary
-  person). Both of those forms can now also build up this richer list —
-  pick people, optional roles, Add — right at creation, same as here; this
-  page is just where you'd manage it afterward, or for a task created
-  before this existed. The two aren't kept in
-  sync with each other automatically; think of the simple dropdown as
-  "who's the main owner" and this list as "who's actually working on it."
+  person) — think of that dropdown as "who's the main owner" and this
+  section as "who's actually working on it, in what capacity." The role
+  names themselves aren't editable here; only who fills each one is. Both
+  task-creation forms have the identical three slots built in, so a task
+  can go out fully staffed without a follow-up trip to its own page.
 - **Attachments** — the same link/file-upload system already used
   elsewhere, just shown inline on the page instead of behind a dialog.
 - **Invoices** — shows any invoice tied specifically to this task, plus
@@ -446,21 +445,20 @@ not just an editable row. What's there:
   workspace before doing anything. A regular member calling the endpoint
   directly (bypassing the UI) would still get rejected, because the check
   doesn't trust anything the client sends about its own permissions.
-- **The Owner permission tier is labeled "Founder" in the UI** — same
-  underlying value (`org_members.role = 'owner'`), same permissions
-  (everything Admin can do, plus can't be removed/demoted like a regular
-  admin can), just relabeled to match how this specific team refers to
-  itself. Setting someone's role to Founder on the Team page *is* making
-  them an owner, not a separate, softer tier.
-- **Five role suggestions show up as autocomplete** on every "Role
-  (optional)" field — project creation, a project's own Assigned members
-  section, task creation, and a task's own Assigned members section:
-  Founder, Account Manager, The Marketing Generalist, The Creative
-  All-Rounder, The Full-Stack Developer (defined once in `src/lib/roles.js`).
-  These are suggestions via a native `<datalist>`, not a locked list — the
-  field stays free text, so a one-off custom label still works exactly as
-  before. The Team page has a small reference block at the bottom listing
-  what each one covers.
+- **Task Assigned Members is three fixed role slots, not a free-form
+  list.** Graphics Designer, Project Manager, Developer (defined once in
+  `src/lib/roles.js`) always show up as plain text on the left, each with
+  its own "choose a member" dropdown on the right — on the task's own
+  page, and in both places a task gets created (My Tasks, a project's
+  inline add-task row). No free text, no Add/Remove — picking a new
+  person for a role replaces whoever was there; clearing back to "Choose
+  a member…" unassigns it. A pre-existing assignment with a role label
+  outside these three (or blank) won't show up here anymore — the row is
+  still in the database, just not surfaced in this section.
+- **Project Assigned members is unchanged** — project creation and a
+  project's own page still use the original free-text "Role (optional)"
+  field, with the three role names as `<datalist>` autocomplete
+  suggestions (a one-off custom label still works fine there).
 - **Task creation is now admin/owner-only.** Everything else about
   tasks — marking done, reassigning, changing due dates, deleting — stays
   open to every member. Only adding *new* tasks is gated, and it's enforced

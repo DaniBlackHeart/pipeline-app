@@ -309,15 +309,13 @@ someone by email.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
 14. Go to **Team** — as the workspace's first (and so far only) member,
-    you're the Founder (same permission tier as Owner, just relabeled — the
-    roster's role dropdown shows "Founder" too), so you'll see the invite
-    form. Scroll down and check the **role suggestions** reference block —
-    the five roles and what each covers. If you deployed section 5, try
-    inviting a second email (even one of your own alt addresses) to see
-    the whole flow end to end — once they set a password and log in, they
-    should land directly in your workspace, with no separate empty one of
-    their own and no workspace switcher cluttering the header (it only
-    appears once there's genuinely more than one option to choose from).
+    you're the Owner, so you'll see the invite form. If you deployed
+    section 5, try inviting a second email (even one of your own alt
+    addresses) to see the whole flow end to end — once they set a
+    password and log in, they should land directly in your workspace, with
+    no separate empty one of their own and no workspace switcher cluttering
+    the header (it only appears once there's genuinely more than one
+    option to choose from).
 15. Back on a project, notice the "Add a task" input only appears for
     admins/owners now — everyone else sees a note instead, though they can
     still update status, assignee, and due date on existing tasks. Change a
@@ -327,18 +325,17 @@ someone by email.
     step), then click **My Tasks** in the nav — it should show up there
     too, regardless of which project it's in.
 17. Click any task's title anywhere in the app — it now opens its own
-    page. Try adding a second assignee with a role label — start typing in
-    the role field and the five suggestions (Account Manager, The
-    Marketing Generalist, etc.) show up as autocomplete, or just type
-    something custom like "Web Developer" — post a note, and — on a task
-    that has no project — fill in client name/website directly on the
-    task. As an admin, try **"+ New task"** on My Tasks and leave the
-    project dropdown on "No project (standalone)" to see that flow end to
-    end — notice start date is already filled in with today, and you can
-    add more than one assigned member right there before hitting Create,
-    no follow-up trip to the task's own page required. Same list-builder
-    (and the same role suggestions) shows up on a project's own "Add a
-    task" row once you start typing a title.
+    page. Under **Assigned members**, you'll see three fixed rows —
+    Graphics Designer, Project Manager, Developer — each with its own
+    "choose a member" dropdown; pick someone for one or two of them, post
+    a note, and — on a task that has no project — fill in client
+    name/website directly on the task. As an admin, try **"+ New task"**
+    on My Tasks and leave the project dropdown on "No project
+    (standalone)" to see that flow end to end — notice start date is
+    already filled in with today, and the same three role slots are right
+    there before hitting Create, no follow-up trip to the task's own page
+    required. Same three slots show up on a project's own "Add a task"
+    row once you start typing a title.
 18. Open a project's client share link in a private/incognito window (same
     one from earlier) and scroll to **"Have something to raise?"** — submit
     a test ticket. Back in the main app's **Tickets** page, it should show
@@ -450,13 +447,19 @@ someone by email.
   not assigned to anyone yet) has nowhere that lists it for everyone to
   browse, unlike a project's own task list. Worth building if standalone
   tasks get used a lot.
-- **The simple single-assignee dropdown and the richer multi-assignee list
-  on a task's detail page are two separate things, not kept in sync.**
-  Assigning someone via the quick dropdown (in a project's task row, or at
-  task creation) doesn't automatically add them to the detail page's
-  "Assigned members" list, and vice versa. Think of the dropdown as "who's
-  the main owner" and the detail-page list as "who's actually working on
-  it" — related, but intentionally not the same field.
+- **The simple single-assignee dropdown and the task page's three fixed
+  Assigned Members role slots are two separate things, not kept in
+  sync.** Assigning someone via the quick dropdown (in a project's task
+  row, or at task creation) doesn't automatically fill one of the three
+  role slots, and vice versa. Think of the dropdown as "who's the main
+  owner" and the three slots as "who's actually working on it, in what
+  capacity" — related, but intentionally not the same field.
+- **A task_assignees row from before the three-role redesign, with a role
+  label outside Graphics Designer/Project Manager/Developer (or blank),
+  won't show up in Assigned Members anymore.** The row itself isn't
+  deleted — it's just not one of the three slots the UI displays, so it's
+  effectively hidden. Only matters for tasks assigned before this change;
+  new assignments always use one of the three.
 - **Deleting a task also deletes its notes, its multi-assignee list, and
   its links to other related tasks** (all cascade with the task). Any
   invoice linked to that task is *not* deleted — it just becomes unlinked,
