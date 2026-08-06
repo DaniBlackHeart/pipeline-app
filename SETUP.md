@@ -299,13 +299,16 @@ someone by email.
     private/incognito window to see exactly what a client would see (no
     login). Back in the project, **Regenerate link** to see the old one stop
     working.
-11. Open a task or ticket and add a link attachment (paste any URL with a
-    label) to see it show up inline.
-12. On that same task or ticket, click **+ Upload a file** and pick a small
-    file (a screenshot or PDF works well) — it should appear in the list
-    right alongside the link, with its file size shown. Click it to
-    confirm it opens correctly (this generates a fresh signed URL each
-    time, so it should work even a while after uploading).
+11. Open a task or ticket and add a link attachment — paste any URL into
+    the input and click the link icon built into it (or press enter) — to
+    see it show up as "File 1" in the list.
+12. On that same task or ticket, click the upload icon right next to the
+    link input and pick a small file (a screenshot or PDF works well) — it
+    should appear as "File 2" right below the link, with its file size
+    shown. Click it to confirm it opens correctly (this generates a fresh
+    signed URL each time, so it should work even a while after
+    uploading). Delete "File 1" and confirm the upload renumbers down to
+    "File 1" too — the numbering is always just position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
 14. Go to **Team** — as the workspace's first (and so far only) member,

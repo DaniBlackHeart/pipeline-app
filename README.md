@@ -279,12 +279,18 @@ public/
 
 Two ways to attach something, for two different situations:
 
-- **Links** — paste a labeled URL (Google Drive, Frame.io, wherever the
-  real file already lives). Best for anything already living elsewhere,
-  and essential for large files — see the size limit below.
+- **Links** — paste a URL (Google Drive, Frame.io, wherever the real file
+  already lives). Best for anything already living elsewhere, and
+  essential for large files — see the size limit below.
 - **File uploads** — actual files stored inside the app, via Supabase
   Storage. Best for smaller reference material you want to just live here:
   screenshots, PDFs, short documents, contracts.
+- **No custom label field.** Each attachment just displays as "File N"
+  (its position in the list — deleting one renumbers the rest so there's
+  never a gap) followed by the link itself or the uploaded filename. The
+  add row is a single line: paste a link and hit the link icon built into
+  the input (or press enter), or click the upload icon right next to it
+  to pick a file — no separate "Add link" button, no upload row below.
 - **25 MB per file, enforced twice** — checked client-side before the
   upload even starts, and enforced again at the storage bucket level
   server-side, so the limit holds even if someone bypasses the app's own
