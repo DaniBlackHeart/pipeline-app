@@ -107,7 +107,7 @@ export default function TicketDetail() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <Link to="/tickets" className="text-sm inline-block mb-4" style={{ color: 'var(--ink-muted)' }}>&larr; All tickets</Link>
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>

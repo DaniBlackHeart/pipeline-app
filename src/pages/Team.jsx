@@ -113,7 +113,7 @@ export default function Team() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <h1 className="font-display font-bold text-2xl mb-1">Team</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>Workspace: {activeOrg?.name}</p>
 

@@ -219,7 +219,7 @@ export default function TaskDetail() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <Link
         to={task.project_id ? `/projects/${task.project_id}` : '/my-tasks'}
         className="text-sm inline-block mb-4"

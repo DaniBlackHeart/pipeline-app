@@ -99,7 +99,7 @@ export default function TicketForm() {
   if (loading) return <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>Loading…</p>
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-xl mx-auto">
       <Link to="/tickets" className="text-sm inline-block mb-4" style={{ color: 'var(--ink-muted)' }}>&larr; All tickets</Link>
 
       <h1 className="font-display font-bold text-2xl mb-6">{isEditing ? 'Edit ticket' : 'New ticket'}</h1>
