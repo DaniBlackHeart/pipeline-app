@@ -34,12 +34,13 @@ See `SETUP.md`.
 
 ```
 src/
-  components/     Scrubber, TallyDot, PriorityBadge, AppShell,
+  components/     Scrubber, TallyDot, PriorityBadge, AppShell, icons,
                   EventDialog, AttachmentsList,
                   TaskAttachmentsDialog, NotificationBell, ActivityLog
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
-                  date-range presets, CSV export, role suggestions
+                  date-range presets, CSV export, role suggestions,
+                  file/attachment helpers
   pages/          AuthPage, Dashboard, NewProject, MyTasks, ProjectDetail,
                   TaskDetail, Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
@@ -100,6 +101,10 @@ public/
   role replaces whoever was there, same behavior as the task version.
   Adding someone notifies them, same as everywhere else people get added
   to something in this app.
+- **Attachments too, on both the creation page and afterward** — links or
+  file uploads, same as tasks and tickets already had. See "How
+  attachments work" below for how the creation-page version handles not
+  having a project id yet.
 - These rules only apply to *new* projects and only going forward — see
   `schema_project_requirements.sql`'s own header for how existing projects
   (which may predate mandatory client/due dates) are handled without
@@ -310,9 +315,18 @@ Two ways to attach something, for two different situations:
   app, just applied to file paths instead of table rows. A file uploaded
   under one workspace is invisible to every other workspace, same
   guarantee as everything else here.
-- Available on both tasks and tickets, so a reference file or review link
-  can sit right next to the work it's about instead of living in a
+- Available on tasks, tickets, and projects — a reference file or review
+  link can sit right next to the work it's about instead of living in a
   separate message thread.
+- **The New Project page has its own attachments section too**, but
+  necessarily works a little differently since there's no project id to
+  attach anything to until the project actually exists: links just sit in
+  the form's local state, and picked files aren't uploaded yet at all
+  (held as-is in memory) — everything actually hits Storage and gets its
+  real attachments row only once "Create project" succeeds. Same visual
+  design either way (File 1/File 2 numbering, the same icons), and if a
+  file upload happens to fail at that point, the project itself is still
+  created fine — just re-add that one from the project's own page after.
 
 ## How notifications work
 

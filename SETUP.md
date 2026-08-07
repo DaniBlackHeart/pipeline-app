@@ -71,7 +71,10 @@ through or you're not sure whether it already ran, just run it again.
     invoices and recurring templates read-only for regular members —
     admins/owners keep full create/edit/delete access; viewing stays open
     to everyone). Needs nothing beyond running the SQL.
-20. Go to **Project Settings → API**. Copy:
+20. Then paste and run `supabase/schema_project_attachments.sql` (lets
+    attachments work on projects too, not just tasks/tickets — no other
+    setup needed, storage/RLS policies are already generic).
+21. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -83,7 +86,7 @@ through or you're not sure whether it already ran, just run it again.
       entirely. If you use either, keep it aside for those sections.
       **Never** put it in `.env.example`, never prefix it `VITE_` (that
       would bundle it into client-side JS), never commit it anywhere.
-21. (Optional, recommended for real use) Under **Authentication → Providers →
+22. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -259,8 +262,11 @@ someone by email.
    structure without a rebuild.
 3. Click **+ New project** — this is its own page now (`/projects/new`),
    not a popup. Client name, start date, and due date are required; the
-   three role slots (Graphics Designer, Project Manager, Developer) are
-   optional and can also be set later from the project's own page. Once
+   three role slots (Graphics Designer, Project Manager, Developer) and
+   the attachments section are both optional and can also be set later
+   from the project's own page. Try adding a link attachment here before
+   submitting — notice nothing actually uploads until you hit **Create
+   project**, since there's no project id yet to attach it to. Once
    created you land straight on that project. Add a few tasks, click a
    task's status dot to cycle todo → in progress → done, watch the
    Scrubber move.
@@ -301,16 +307,17 @@ someone by email.
     private/incognito window to see exactly what a client would see (no
     login). Back in the project, **Regenerate link** to see the old one stop
     working.
-11. Open a task or ticket and add a link attachment — paste any URL into
-    the input and click the link icon built into it (or press enter) — to
-    see it show up as "File 1" in the list.
-12. On that same task or ticket, click the upload icon right next to the
-    link input and pick a small file (a screenshot or PDF works well) — it
-    should appear as "File 2" right below the link, with its file size
-    shown. Click it to confirm it opens correctly (this generates a fresh
-    signed URL each time, so it should work even a while after
-    uploading). Delete "File 1" and confirm the upload renumbers down to
-    "File 1" too — the numbering is always just position in the list.
+11. Open a task, ticket, or project and add a link attachment — paste any
+    URL into the input and click the link icon built into it (or press
+    enter) — to see it show up as "File 1" in the list.
+12. On that same task, ticket, or project, click the upload icon right
+    next to the link input and pick a small file (a screenshot or PDF
+    works well) — it should appear as "File 2" right below the link, with
+    its file size shown. Click it to confirm it opens correctly (this
+    generates a fresh signed URL each time, so it should work even a
+    while after uploading). Delete "File 1" and confirm the upload
+    renumbers down to "File 1" too — the numbering is always just
+    position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back.
 14. Go to **Team** — as the workspace's first (and so far only) member,
