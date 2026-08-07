@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
 import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
+import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
 import { QUICK_ROLES } from '../lib/roles'
 
@@ -318,6 +319,11 @@ export default function ProjectDetail() {
             )
           })}
         </ul>
+      </div>
+
+      <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <h2 className="font-display font-bold text-lg mb-3">Attachments</h2>
+        <AttachmentsList orgId={activeOrgId} parentType="project" parentId={projectId} />
       </div>
 
       {error && (
