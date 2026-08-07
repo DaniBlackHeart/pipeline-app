@@ -257,11 +257,13 @@ someone by email.
    you automatically — this is the multi-tenant org the schema is built
    around, so future team members or licensed workspaces slot into the same
    structure without a rebuild.
-3. Create a project — client name, start date, and due date are now
-   required, and you can optionally assign one or more members with a
-   role label (e.g. "Video Editor") right from the creation dialog. Add a
-   few tasks, click a task's status dot to cycle todo → in progress →
-   done, watch the Scrubber move.
+3. Click **+ New project** — this is its own page now (`/projects/new`),
+   not a popup. Client name, start date, and due date are required; the
+   three role slots (Graphics Designer, Project Manager, Developer) are
+   optional and can also be set later from the project's own page. Once
+   created you land straight on that project. Add a few tasks, click a
+   task's status dot to cycle todo → in progress → done, watch the
+   Scrubber move.
 4. Go to **Settings**, paste in your Wise Business permanent payment link
    (grab it from Wise → Payments → "Your open link"). This is a one-time
    setup — every invoice you create from here on will show it automatically.
@@ -457,12 +459,13 @@ someone by email.
   role slots, and vice versa. Think of the dropdown as "who's the main
   owner" and the three slots as "who's actually working on it, in what
   capacity" — related, but intentionally not the same field.
-- **A task_assignees row from before the three-role redesign, with a role
+- **An assignees row from before the three-role redesign, with a role
   label outside Graphics Designer/Project Manager/Developer (or blank),
-  won't show up in Assigned Members anymore.** The row itself isn't
-  deleted — it's just not one of the three slots the UI displays, so it's
-  effectively hidden. Only matters for tasks assigned before this change;
-  new assignments always use one of the three.
+  won't show up in Assigned Members anymore.** Applies to both
+  `task_assignees` and `project_assignees` — the row itself isn't
+  deleted, it's just not one of the three slots the UI displays, so it's
+  effectively hidden. Only matters for tasks/projects assigned before
+  this change; new assignments always use one of the three.
 - **Deleting a task also deletes its notes, its multi-assignee list, and
   its links to other related tasks** (all cascade with the task). Any
   invoice linked to that task is *not* deleted — it just becomes unlinked,

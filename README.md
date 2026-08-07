@@ -35,13 +35,13 @@ See `SETUP.md`.
 ```
 src/
   components/     Scrubber, TallyDot, PriorityBadge, AppShell,
-                  NewProjectDialog, EventDialog, AttachmentsList,
+                  EventDialog, AttachmentsList,
                   TaskAttachmentsDialog, NotificationBell, ActivityLog
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
-                  date-range presets, CSV export
-  pages/          AuthPage, Dashboard, MyTasks, ProjectDetail, TaskDetail,
-                  Invoices, InvoiceForm, InvoiceDetail,
+                  date-range presets, CSV export, role suggestions
+  pages/          AuthPage, Dashboard, NewProject, MyTasks, ProjectDetail,
+                  TaskDetail, Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
                   Settings, Calendar, Tickets, TicketForm, TicketDetail,
                   Reports, Team, ShareView (public, unauthenticated)
@@ -87,14 +87,19 @@ public/
 
 ## How projects work
 
+- **Created on its own page** (`/projects/new`), not a modal — same pattern
+  as invoices and tickets. Landing on the new project's own page afterward,
+  not back on the project list.
 - **Client name, start date, and due date are all mandatory** — a project
   can't be created without them. Enforced at the database level, not just
   the form, same as the invoice requirements below.
-- **Multiple assigned members, each with an optional role label** (e.g.
-  "Video Editor", "Project Coordinator", or one of the three suggested
-  role names — free text either way). Add people right at creation time,
-  or later from the project's own page. Adding someone notifies them,
-  same as everywhere else people get added to something in this app.
+- **Assigned members is the same three fixed role slots used on tasks** —
+  Graphics Designer, Project Manager, Developer, each with its own "choose
+  a member" dropdown, no free-text role field. Identical on the creation
+  page and on a project's own page afterward; picking a new person for a
+  role replaces whoever was there, same behavior as the task version.
+  Adding someone notifies them, same as everywhere else people get added
+  to something in this app.
 - These rules only apply to *new* projects and only going forward — see
   `schema_project_requirements.sql`'s own header for how existing projects
   (which may predate mandatory client/due dates) are handled without
@@ -461,10 +466,11 @@ not just an editable row. What's there:
   a member…" unassigns it. A pre-existing assignment with a role label
   outside these three (or blank) won't show up here anymore — the row is
   still in the database, just not surfaced in this section.
-- **Project Assigned members is unchanged** — project creation and a
-  project's own page still use the original free-text "Role (optional)"
-  field, with the three role names as `<datalist>` autocomplete
-  suggestions (a one-off custom label still works fine there).
+- **Project Assigned members now matches the task version exactly** —
+  same three fixed role slots, same "choose a member" dropdown per role,
+  on both the project creation page and a project's own page. No more
+  free-text "Role (optional)" field or `<datalist>` suggestions anywhere
+  in the app — the last of that was removed along with this change.
 - **Task creation is now admin/owner-only.** Everything else about
   tasks — marking done, reassigning, changing due dates, deleting — stays
   open to every member. Only adding *new* tasks is gated, and it's enforced
