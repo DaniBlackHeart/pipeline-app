@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
-import NewProjectDialog from '../components/NewProjectDialog'
 
 export default function Dashboard() {
   const { activeOrgId } = useAuth()
@@ -12,7 +11,6 @@ export default function Dashboard() {
   const [taskCounts, setTaskCounts] = useState({}) // { [project_id]: { total, done } }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showNewProject, setShowNewProject] = useState(false)
 
   const load = useCallback(async () => {
     if (!activeOrgId) return
@@ -64,13 +62,13 @@ export default function Dashboard() {
             Everything in flight, at a glance.
           </p>
         </div>
-        <button
-          onClick={() => setShowNewProject(true)}
+        <Link
+          to="/projects/new"
           className="rounded-md px-4 py-2 text-sm font-medium flex-shrink-0"
           style={{ background: 'var(--ink)', color: 'var(--panel)' }}
         >
           + New project
-        </button>
+        </Link>
       </div>
 
       {error && (
@@ -90,13 +88,13 @@ export default function Dashboard() {
           <p className="text-sm mb-5" style={{ color: 'var(--ink-muted)' }}>
             Start your first one — it takes about ten seconds.
           </p>
-          <button
-            onClick={() => setShowNewProject(true)}
-            className="rounded-md px-4 py-2 text-sm font-medium"
+          <Link
+            to="/projects/new"
+            className="inline-block rounded-md px-4 py-2 text-sm font-medium"
             style={{ background: 'var(--ink)', color: 'var(--panel)' }}
           >
             + New project
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -138,14 +136,6 @@ export default function Dashboard() {
             )
           })}
         </div>
-      )}
-
-      {showNewProject && (
-        <NewProjectDialog
-          orgId={activeOrgId}
-          onClose={() => setShowNewProject(false)}
-          onCreated={() => { setShowNewProject(false); load() }}
-        />
       )}
     </div>
   )
