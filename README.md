@@ -40,7 +40,7 @@ src/
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export, role suggestions,
-                  file/attachment helpers
+                  file/attachment helpers, Google Calendar client helpers
   pages/          AuthPage, Dashboard, NewProject, MyTasks, ProjectDetail,
                   TaskDetail, Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
@@ -52,6 +52,15 @@ api/
   invite-member.js        Vercel serverless function — called from the Team
                           page, verifies the caller's own admin role itself
                           rather than trusting the client
+  google-oauth-exchange.js, google-calendar-status.js,
+  google-calendar-disconnect.js, google-calendar-push.js,
+  google-calendar-sync.js
+                          Google Calendar two-way sync — see "How the
+                          calendar works" below
+  _authHelpers.js, _googleAuth.js
+                          Shared helpers, not routes themselves (leading
+                          underscore excludes them from Vercel's route
+                          discovery)
 supabase/
   schema.sql                    Multi-tenant core schema + RLS (orgs/projects/tasks)
   schema_invoicing.sql          Invoices, line items, Wise payment link setting
@@ -77,11 +86,16 @@ supabase/
                                         multi-assignee support on projects
   schema_task_detail.sql        Standalone tasks, multi-assignee, task
                                  notes, task-to-task links, task-linked invoices
+  schema_invoice_admin_gate.sql Invoices/recurring templates read-only for
+                                 members, full access for admins/owners
+  schema_project_attachments.sql  Extends attachments to work on projects
+  schema_google_calendar_sync.sql  Google Calendar connections + per-person
+                                    event id mappings (service-role only)
 cleanup_redundant_workspaces.sql
   ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
   sequence. See its own header before running.
 vercel.json
-  Cron schedule for the daily digest function
+  Cron schedule for the daily digest and Google Calendar sync functions
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
@@ -176,11 +190,6 @@ public/
 
 ## How the calendar works
 
-- **Self-contained, not synced with Google Calendar.** Wiring up real Google
-  Calendar sync means an OAuth app registered in Google Cloud Console
-  (client ID/secret, consent screen, token refresh handling) — a genuine
-  chunk of extra setup that didn't fit this pass. Worth adding later if you
-  want events to show up on your phone's native calendar too.
 - The month grid merges three sources with nothing duplicated: standalone
   events you create, task due dates, and project due dates — each shown as
   a colored dot (amber = upcoming, red = overdue, teal = done/completed).
@@ -188,7 +197,49 @@ public/
   project item jumps to that project; clicking an event opens it for
   editing.
 - Task/project due dates are read-only from the calendar (edit them from
-  the project itself) — only standalone events are created/edited here.
+  the project itself) — only standalone events are created/edited here,
+  and only standalone events sync with Google (below) — due dates stay a
+  Pipeline-only concept.
+- **Two-way Google Calendar sync, honestly scoped.** Each person connects
+  their *own* Google account from Settings — this isn't an org-wide
+  connection, so a workspace with three people could have zero, one, two,
+  or three of them actually synced at any given time. Full setup
+  (registering an OAuth app in Google Cloud Console) is in `SETUP.md`
+  section 6, since it needs real steps on Google's side, not just an env
+  var.
+  - **Pipeline → Google is immediate.** Create, edit, or delete a
+    standalone event, and it pushes out to *every* connected person's
+    Google Calendar within moments — not just the acting person's; a
+    shared team calendar should look the same everywhere. Whoever made
+    the change doesn't need to be connected themselves for this to work.
+  - **Google → Pipeline is not instant**, deliberately — it happens when
+    a connected person opens the Calendar page (a pull once per visit) or
+    hits **Sync now**, plus a once-a-day cron job as a backstop. Real
+    real-time would need Google's push-notification webhooks, which is a
+    meaningfully bigger addition than this first version; polling more
+    than once a day isn't even possible on Vercel's free tier (cron jobs
+    are capped at once daily there). New events created directly in
+    Google Calendar do get pulled in as real Pipeline events, same as
+    anything else.
+  - **Deletion is asymmetric, on purpose.** Deleting an event in Pipeline
+    pushes a real delete to every connected Google Calendar. Deleting it
+    directly in *Google* Calendar only removes that one person's sync
+    link — the shared Pipeline event stays. Editing in Google *does*
+    still update the shared Pipeline event for everyone; only deletion
+    works this way, specifically so one person cleaning up their own
+    Google Calendar can't silently remove something the rest of the team
+    still needs.
+  - **Conflicts are last-write-wins**, no field-level merge — reasonable
+    for how rarely a small team would edit the exact same event on both
+    sides at once, but worth knowing.
+  - Syncs against each person's **primary** Google Calendar only (no
+    picker for a different one), covering roughly 6 months back to 12
+    months forward from whichever moment their first sync ran.
+  - **The Google side needs its OAuth consent screen moved to Production
+    status** to avoid a real Google policy: apps left in Testing status
+    have every connected account's access silently expire every 7 days.
+    Moving to Production doesn't require Google's full verification
+    process for an app this size — see `SETUP.md` for the exact steps.
 
 ## How invoicing works
 

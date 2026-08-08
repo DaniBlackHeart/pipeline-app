@@ -74,19 +74,24 @@ through or you're not sure whether it already ran, just run it again.
 20. Then paste and run `supabase/schema_project_attachments.sql` (lets
     attachments work on projects too, not just tasks/tickets — no other
     setup needed, storage/RLS policies are already generic).
-21. Go to **Project Settings → API**. Copy:
+21. Then paste and run `supabase/schema_google_calendar_sync.sql` (two new
+    tables for Google Calendar sync, both service-role-only — nothing to
+    configure here yet, that's section 6 below, only needed if you want
+    that feature at all).
+22. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
       `VITE_SUPABASE_ANON_KEY`
     - **service_role key** (may be labeled **"Secret key"** in newer
-      projects, formatted like `sb_secret_...`) → this is needed for two
-      optional server-side features: the daily digest (section 4) and
-      inviting teammates (section 5). Skip both and you can skip this key
-      entirely. If you use either, keep it aside for those sections.
-      **Never** put it in `.env.example`, never prefix it `VITE_` (that
-      would bundle it into client-side JS), never commit it anywhere.
-22. (Optional, recommended for real use) Under **Authentication → Providers →
+      projects, formatted like `sb_secret_...`) → this is needed for three
+      optional server-side features: the daily digest (section 4),
+      inviting teammates (section 5), and Google Calendar sync (section
+      6). Skip all three and you can skip this key entirely. If you use
+      any of them, keep it aside for those sections. **Never** put it in
+      `.env.example`, never prefix it `VITE_` (that would bundle it into
+      client-side JS), never commit it anywhere.
+23. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -253,7 +258,92 @@ someone by email.
    correctly-addressed link regardless of how the account was originally
    created.
 
-## 6. Try it
+## 6. Optional: Google Calendar sync
+
+Skip this if you don't need it — the Calendar page works fine without it,
+this just adds two-way sync with each person's own Google Calendar. This
+is the most involved optional feature to set up, since it needs a real
+Google Cloud project on your end, not just an env var. Budget 15-30
+minutes the first time.
+
+**What it actually does, honestly scoped:** each person connects their
+*own* Google account from Settings. From then on, creating, editing, or
+deleting a Calendar event in Pipeline pushes that change out to *every*
+connected person's Google Calendar within moments (whoever made the
+change doesn't need to be connected themselves). The other direction —
+Google → Pipeline — isn't instant the same way: it happens when a
+connected person opens the Calendar page (a one-time pull each visit) or
+hits **Sync now**, plus a once-a-day cron job as a backstop so changes
+still land even if nobody opens the page for a while. Real two-way sync,
+just not real-time in the Google→Pipeline direction — see "Known
+limitations" for why (short version: Vercel's free tier caps cron jobs at
+once a day, and proper real-time needs Google push-notification webhooks,
+which is a bigger lift than this warranted for a first version).
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
+   create a new project (top-left project dropdown → New Project) — any
+   name, e.g. "Pipeline Calendar Sync". If you already have Google
+   Workspace for your business, note that for step 3 below.
+2. **APIs & Services → Library**, search **Google Calendar API**, click it,
+   **Enable**.
+3. **APIs & Services → OAuth consent screen**:
+   - **User type**: **External**, unless you have Google Workspace and
+     only your own organization will ever connect — then **Internal**
+     avoids everything mentioned about test users and token expiry below
+     entirely. Most people reading this should pick External.
+   - Fill in app name (e.g. "Pipeline"), your support email, developer
+     contact email.
+   - **Scopes**: add `.../auth/calendar` (full calendar access — needed
+     for real two-way sync, not just reading) and
+     `.../auth/userinfo.email` (so Settings can show which account is
+     connected).
+   - **Test users** (External + Testing only): add your own Google email
+     and anyone else on the team who'll connect. Without this, Google
+     blocks the connection entirely for anyone not listed.
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
+   - **Application type**: **Web application**.
+   - **Authorized redirect URIs**, add both (yes, both, even if you only
+     use one today):
+     - `https://your-app.vercel.app/settings` (your real deployed URL)
+     - `http://localhost:5173/settings` (for local dev, if you ever use
+       `npm run dev` to test this feature — Vite's default port)
+   - Save. Copy the **Client ID** and **Client Secret** it gives you.
+5. In Vercel → your project → Settings → Environment Variables, add:
+   - `VITE_GOOGLE_CLIENT_ID` — the Client ID from step 4. Public and
+     client-side by design (same as the Supabase anon key) — this is why
+     it's fine to also put a placeholder in `.env.example`.
+   - `GOOGLE_CLIENT_SECRET` — the Client Secret from step 4. Server-only,
+     same handling as the Supabase service role key: never `.env.example`,
+     never `VITE_` prefixed, never committed anywhere.
+   - `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` — if you didn't already
+     set these up for the digest (section 4), do that now too; the sync
+     endpoints reuse both.
+6. Redeploy so the env vars take effect.
+7. **About that "unverified app" warning:** while your OAuth consent
+   screen is in Testing (or Production-but-unverified — see below), Google
+   shows anyone connecting a scary-looking "Google hasn't verified this
+   app" screen. That's expected and safe here — it's *your own* app. Click
+   **Advanced → Go to [your app name] (unsafe)** to continue. Google shows
+   this for any app that hasn't been through their formal verification
+   process (a real security audit), which almost nobody needs for a
+   small-team internal tool with a handful of users.
+8. **The Testing-mode 7-day catch:** while the consent screen stays in
+   Testing status, Google expires everyone's refresh token after exactly 7
+   days, meaning the connection silently breaks and needs reconnecting on
+   the same schedule. To avoid that, once you've confirmed it works,
+   change the OAuth consent screen's **Publishing status** from Testing to
+   **In production** (still on the OAuth consent screen page). For an app
+   like this one — under 100 users, not requesting Gmail/Drive-level
+   scopes — that does *not* require Google's full verification/security-
+   audit process; it just removes the 7-day cap and the 100-test-user
+   limit, and connecting still shows the same "unverified app" click-
+   through from step 7 above (a small, one-time inconvenience per person
+   who connects, not a real blocker).
+9. From **Settings**, click **Connect Google Calendar**, approve access,
+   land back on Settings connected. Click **Sync now** to pull in whatever
+   already exists on that Google Calendar.
+
+## 7. Try it
 
 1. Visit the deployed URL (or localhost), sign up with an email + password.
 2. On signup, a personal workspace ("Your Name's Workspace") is created for
@@ -284,7 +374,11 @@ someone by email.
    payment link embedded.
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
-   a shoot day) to see it merge in alongside them.
+   a shoot day) to see it merge in alongside them. If you deployed section
+   6, connect Google Calendar from Settings first, then create an event
+   here and check it lands in your actual Google Calendar within a few
+   moments (no page refresh needed) — then create one directly in Google
+   Calendar and click **Sync now** back in Pipeline to pull it in.
 7. Go to **Tickets → New ticket**, file something with a priority and type,
    then open it and post a comment to see the discussion thread.
 8. Go to **Reports** — as an admin/owner you get everything you just
@@ -319,7 +413,10 @@ someone by email.
     renumbers down to "File 1" too — the numbering is always just
     position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
-    step 8 there and confirm you get a response back.
+    step 8 there and confirm you get a response back. If you also deployed
+    Google Calendar sync (section 6), the same idea works for its cron
+    endpoint: `curl -X POST https://your-app.vercel.app/api/google-calendar-sync -H "Authorization: Bearer YOUR_CRON_SECRET"` —
+    should return a JSON summary of connections processed.
 14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the Owner, so you'll see the invite form. If you deployed
     section 5, try inviting a second email (even one of your own alt
@@ -488,6 +585,40 @@ someone by email.
   but don't expose `CRON_SECRET` anywhere public (client code, a public
   repo's committed `.env`, etc.) — anyone with it could trigger the job
   on demand, though they still couldn't read or change any data through it.
+- **Google Calendar sync pulls are not real-time in the Google → Pipeline
+  direction.** Pushes (Pipeline → Google) happen immediately. Pulls happen
+  when a connected person opens the Calendar page or clicks "Sync now",
+  plus a once-a-day cron backstop — Vercel's free tier caps cron jobs at
+  once a day, and true real-time would need Google push-notification
+  webhooks (a bigger addition than this first version). If nobody with a
+  connection opens Pipeline for a day or two, Google-side changes just
+  wait until someone does, or until the next cron run.
+- **Google Calendar sync syncs against "primary" only** — each person's
+  main Google Calendar, not a calendar they pick. No UI for choosing a
+  different one yet.
+- **Deleting an event in Google Calendar doesn't delete it in Pipeline —
+  on purpose.** It only removes that one person's sync link, since the
+  calendar is shared across the team and one person tidying their own
+  Google Calendar shouldn't be able to silently remove something everyone
+  else still needs. Editing an event in Google *does* update the shared
+  Pipeline event for everyone, though — only deletion is asymmetric.
+  Deleting for real still has to happen in Pipeline, which does push that
+  delete out to every connected Google Calendar.
+- **Conflicting edits use last-write-wins, no merge.** If the same event
+  gets edited in Pipeline and in Google before the next sync catches up,
+  whichever write lands last is what sticks — there's no field-level merge
+  or conflict warning. Reasonable for how small a team would realistically
+  collide on the exact same event at the exact same moment, but worth
+  knowing.
+- **Google's own sync window covers 6 months back to 12 months forward**
+  from whenever the first full sync ran for a given connection — events
+  further out than that in either direction won't be pulled in. Fine for
+  active project work, not meant for archiving years of calendar history.
+- **The OAuth consent screen's Testing status expires everyone's
+  connection every 7 days** until you switch Publishing status to
+  Production (see setup section 6, step 8) — not a bug, a real Google
+  policy for unverified apps. Easy to miss if you only test it once and
+  move on.
 
 ## Where to check for errors after launch
 
