@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { pushGoogleCalendarChange } from '../lib/googleCalendar'
 
 // `initialDate` is a "YYYY-MM-DD" string used to pre-fill new events created
 // from a specific day cell. `event` is the existing row when editing.
@@ -54,20 +55,26 @@ export default function EventDialog({ orgId, projects, initialDate, event, onClo
       all_day: allDay,
     }
 
-    const { error: saveError } = isEditing
-      ? await supabase.from('calendar_events').update(payload).eq('id', event.id)
-      : await supabase.from('calendar_events').insert({ ...payload, created_by: userData?.user?.id })
+    const { data: saveResult, error: saveError } = isEditing
+      ? await supabase.from('calendar_events').update(payload).eq('id', event.id).select('id').single()
+      : await supabase.from('calendar_events').insert({ ...payload, created_by: userData?.user?.id }).select('id').single()
 
     setSaving(false)
     if (saveError) {
       setError(saveError.message)
       return
     }
+    pushGoogleCalendarChange(orgId, saveResult.id, 'upsert')
     onSaved()
   }
 
   const handleDelete = async () => {
     setSaving(true)
+    // Push to Google *before* deleting locally — the local delete cascades
+    // away calendar_event_google_links (its FK), which is exactly what the
+    // push endpoint needs to find the matching Google event id. Deleting
+    // locally first would orphan the event on Google's side instead.
+    await pushGoogleCalendarChange(orgId, event.id, 'delete')
     const { error: deleteError } = await supabase.from('calendar_events').delete().eq('id', event.id)
     setSaving(false)
     if (deleteError) {

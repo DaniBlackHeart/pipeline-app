@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import EventDialog from '../components/EventDialog'
 import { buildMonthGrid, dateKey, todayKey, WEEKDAY_LABELS, formatTime, monthLabel } from '../lib/calendarUtils'
+import { getGoogleCalendarStatus, syncGoogleCalendarNow } from '../lib/googleCalendar'
 
 export default function Calendar() {
   const { activeOrgId } = useAuth()
@@ -17,6 +18,8 @@ export default function Calendar() {
   const [error, setError] = useState('')
   const [selectedDate, setSelectedDate] = useState(todayKey())
   const [dialogState, setDialogState] = useState(null) // { mode: 'new' | 'edit', event? }
+  const [googleConnected, setGoogleConnected] = useState(false)
+  const [googleSyncing, setGoogleSyncing] = useState(false)
 
   const grid = useMemo(() => buildMonthGrid(year, month), [year, month])
 
@@ -45,6 +48,33 @@ export default function Calendar() {
   }, [activeOrgId])
 
   useEffect(() => { load() }, [load])
+
+  // Silent, once-per-visit pull if this person has a Google connection —
+  // not a live poll, just enough that opening the Calendar page is
+  // itself a reasonably fresh sync point. Errors here are swallowed;
+  // "Sync now" below surfaces them properly if it matters.
+  useEffect(() => {
+    if (!activeOrgId) return
+    getGoogleCalendarStatus(activeOrgId)
+      .then((status) => {
+        setGoogleConnected(status.connected)
+        if (status.connected) return syncGoogleCalendarNow(activeOrgId).then(load)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrgId])
+
+  const handleSyncNow = async () => {
+    setGoogleSyncing(true)
+    setError('')
+    try {
+      await syncGoogleCalendarNow(activeOrgId)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+    setGoogleSyncing(false)
+  }
 
   // All projects for the org (for the "linked project" dropdown), separate
   // from the due-date-filtered list used for chips.
@@ -140,13 +170,26 @@ export default function Calendar() {
             Events, task due dates, and project deadlines, together.
           </p>
         </div>
-        <button
-          onClick={() => setDialogState({ mode: 'new' })}
-          className="rounded-md px-4 py-2 text-sm font-medium flex-shrink-0"
-          style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-        >
-          + New event
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {googleConnected && (
+            <button
+              onClick={handleSyncNow}
+              disabled={googleSyncing}
+              className="rounded-md px-3 py-2 text-sm font-medium border disabled:opacity-60"
+              style={{ borderColor: 'var(--border)' }}
+              title="Pull the latest from Google Calendar"
+            >
+              {googleSyncing ? 'Syncing…' : 'Sync now'}
+            </button>
+          )}
+          <button
+            onClick={() => setDialogState({ mode: 'new' })}
+            className="rounded-md px-4 py-2 text-sm font-medium"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            + New event
+          </button>
+        </div>
       </div>
 
       {error && (
