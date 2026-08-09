@@ -335,10 +335,12 @@ which is a bigger lift than this warranted for a first version).
    screen is in Testing (or Production-but-unverified — see below), Google
    shows anyone connecting a scary-looking "Google hasn't verified this
    app" screen. That's expected and safe here — it's *your own* app. Click
-   **Advanced → Go to [your app name] (unsafe)** to continue. Google shows
-   this for any app that hasn't been through their formal verification
-   process (a real security audit), which almost nobody needs for a
-   small-team internal tool with a handful of users.
+   **Continue** (Google's wording for this has changed over time — it may
+   show as "Advanced → Go to [your app name] (unsafe)" instead, same
+   meaning either way) to proceed. Google shows this for any app that
+   hasn't been through their formal verification process (a real security
+   audit), which almost nobody needs for a small-team internal tool with a
+   handful of users.
 8. **The Testing-mode 7-day catch:** while the app stays in Testing status,
    Google expires everyone's refresh token after exactly 7 days, meaning
    the connection silently breaks and needs reconnecting on the same
