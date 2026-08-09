@@ -286,28 +286,40 @@ which is a bigger lift than this warranted for a first version).
    Workspace for your business, note that for step 3 below.
 2. **APIs & Services → Library**, search **Google Calendar API**, click it,
    **Enable**.
-3. **APIs & Services → OAuth consent screen**:
-   - **User type**: **External**, unless you have Google Workspace and
-     only your own organization will ever connect — then **Internal**
-     avoids everything mentioned about test users and token expiry below
-     entirely. Most people reading this should pick External.
-   - Fill in app name (e.g. "Pipeline"), your support email, developer
-     contact email.
-   - **Scopes**: add `.../auth/calendar` (full calendar access — needed
-     for real two-way sync, not just reading) and
-     `.../auth/userinfo.email` (so Settings can show which account is
-     connected).
-   - **Test users** (External + Testing only): add your own Google email
-     and anyone else on the team who'll connect. Without this, Google
-     blocks the connection entirely for anyone not listed.
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
+3. **APIs & Services → OAuth consent screen** takes you to what Google now
+   calls the **Google Auth Platform**. On a fresh project it shows "Google
+   Auth Platform not configured yet" — click **Get started** and work
+   through its 4-step wizard:
+   - **App information**: an app name (e.g. "Pipeline") and a user support
+     email (your own is fine) → Next.
+   - **Audience**: **External**, unless you have Google Workspace and only
+     your own organization will ever connect — then **Internal** avoids
+     everything mentioned about test users and token expiry below
+     entirely. Most people reading this should pick External. → Next.
+   - **Contact information**: an email Google can reach you at about this
+     project → Next.
+   - **Finish**: agree to the Google API Services User Data Policy →
+     **Continue** → **Create**.
+   That creates the base configuration; three more things need setting up
+   from the left-hand nav afterward:
+   - **Audience** page → **Test users** → **Add users** → your own Google
+     email and anyone else on the team who'll connect (External +
+     Testing only). Without this, Google blocks the connection entirely
+     for anyone not listed.
+   - **Data Access** page → **Add or remove scopes** → add
+     `.../auth/calendar` (full calendar access — needed for real two-way
+     sync, not just reading) and `.../auth/userinfo.email` (so Settings
+     can show which account is connected) → **Update** → **Save**.
+   - **Clients** page is where the actual OAuth client gets created —
+     that's step 4 next.
+4. **Google Auth Platform → Clients → Create client**:
    - **Application type**: **Web application**.
    - **Authorized redirect URIs**, add both (yes, both, even if you only
      use one today):
      - `https://your-app.vercel.app/settings` (your real deployed URL)
      - `http://localhost:5173/settings` (for local dev, if you ever use
        `npm run dev` to test this feature — Vite's default port)
-   - Save. Copy the **Client ID** and **Client Secret** it gives you.
+   - **Create**. Copy the **Client ID** and **Client Secret** it gives you.
 5. In Vercel → your project → Settings → Environment Variables, add:
    - `VITE_GOOGLE_CLIENT_ID` — the Client ID from step 4. Public and
      client-side by design (same as the Supabase anon key) — this is why
@@ -327,14 +339,14 @@ which is a bigger lift than this warranted for a first version).
    this for any app that hasn't been through their formal verification
    process (a real security audit), which almost nobody needs for a
    small-team internal tool with a handful of users.
-8. **The Testing-mode 7-day catch:** while the consent screen stays in
-   Testing status, Google expires everyone's refresh token after exactly 7
-   days, meaning the connection silently breaks and needs reconnecting on
-   the same schedule. To avoid that, once you've confirmed it works,
-   change the OAuth consent screen's **Publishing status** from Testing to
-   **In production** (still on the OAuth consent screen page). For an app
-   like this one — under 100 users, not requesting Gmail/Drive-level
-   scopes — that does *not* require Google's full verification/security-
+8. **The Testing-mode 7-day catch:** while the app stays in Testing status,
+   Google expires everyone's refresh token after exactly 7 days, meaning
+   the connection silently breaks and needs reconnecting on the same
+   schedule. To avoid that, once you've confirmed it works, go to
+   **Google Auth Platform → Audience** and change **Publishing status**
+   from Testing to **In production**. For an app like this one — under 100
+   users, not requesting Gmail/Drive-level scopes — that does *not*
+   require Google's full verification/security-
    audit process; it just removes the 7-day cap and the 100-test-user
    limit, and connecting still shows the same "unverified app" click-
    through from step 7 above (a small, one-time inconvenience per person
