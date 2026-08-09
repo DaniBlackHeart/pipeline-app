@@ -15,8 +15,8 @@ export default async function handler(req, res) {
     return
   }
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    res.status(500).json({ error: 'Google Calendar sync is not configured on this deployment yet (missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).' })
+  if (!process.env.VITE_GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    res.status(500).json({ error: 'Google Calendar sync is not configured on this deployment yet (missing VITE_GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).' })
     return
   }
 
