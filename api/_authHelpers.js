@@ -54,3 +54,23 @@ export async function requireOrgMember(admin, res, orgId, userId) {
   }
   return true
 }
+
+// Stricter version for admin-only actions (Wise reconciliation setup,
+// confirming/ignoring a match) — same shape, just checks the role too.
+export async function requireOrgAdmin(admin, res, orgId, userId) {
+  const { data: membership, error } = await admin
+    .from('org_members')
+    .select('role')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    res.status(500).json({ error: error.message })
+    return false
+  }
+  if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    res.status(403).json({ error: 'Admins only' })
+    return false
+  }
+  return true
+}
