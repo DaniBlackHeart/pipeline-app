@@ -7,6 +7,10 @@
     {
       "path": "/api/google-calendar-sync",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/wise-reconcile-sync",
+      "schedule": "0 6 * * *"
     }
   ],
   "rewrites": [
