@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
 import { formatMoney } from '../lib/currency'
+import { listUnmatchedWiseTransactions, confirmWiseTransactionMatch, ignoreWiseTransaction } from '../lib/wiseReconcile'
 
 function deriveDisplayStatus(invoice) {
   if (invoice.status === 'sent' && invoice.due_date && new Date(invoice.due_date) < new Date(new Date().toDateString())) {
@@ -40,6 +41,51 @@ export default function Invoices() {
   }, [activeOrgId])
 
   useEffect(() => { load() }, [load])
+
+  const [unmatched, setUnmatched] = useState([])
+  const [matchPicks, setMatchPicks] = useState({}) // { [transactionId]: invoiceId }
+  const [reconcileBusyId, setReconcileBusyId] = useState('')
+  const [reconcileError, setReconcileError] = useState('')
+
+  const loadUnmatched = useCallback(async () => {
+    if (!activeOrgId || !isAdmin) return
+    try {
+      setUnmatched(await listUnmatchedWiseTransactions(activeOrgId))
+    } catch {
+      // Most likely no Wise connection set up (or not eligible) — this
+      // panel just stays empty rather than showing an error for
+      // something that isn't set up, same philosophy as the Google
+      // Calendar card checking `connected` before rendering anything.
+    }
+  }, [activeOrgId, isAdmin])
+
+  useEffect(() => { loadUnmatched() }, [loadUnmatched])
+
+  const handleConfirmMatch = async (transactionId) => {
+    const invoiceId = matchPicks[transactionId]
+    if (!invoiceId) return
+    setReconcileBusyId(transactionId)
+    setReconcileError('')
+    try {
+      await confirmWiseTransactionMatch(transactionId, invoiceId)
+      await Promise.all([loadUnmatched(), load()])
+    } catch (err) {
+      setReconcileError(err.message)
+    }
+    setReconcileBusyId('')
+  }
+
+  const handleIgnoreTransaction = async (transactionId) => {
+    setReconcileBusyId(transactionId)
+    setReconcileError('')
+    try {
+      await ignoreWiseTransaction(transactionId)
+      await loadUnmatched()
+    } catch (err) {
+      setReconcileError(err.message)
+    }
+    setReconcileBusyId('')
+  }
 
   const filtered = invoices.filter((inv) => {
     if (filter === 'all') return true
@@ -100,6 +146,58 @@ export default function Invoices() {
           <p className="font-display font-bold text-lg mt-1" style={{ color: 'var(--tally-done)' }}>{formatMoney(totals.paid)}</p>
         </div>
       </div>
+
+      {isAdmin && unmatched.length > 0 && (
+        <div className="rounded-lg border p-4 mb-6" style={{ background: 'var(--tally-alert-soft)', borderColor: 'var(--border)' }}>
+          <h2 className="font-display font-bold text-base mb-1">Unmatched Wise transactions</h2>
+          <p className="text-xs mb-3" style={{ color: 'var(--ink-muted)' }}>
+            Money came in but couldn't be matched to an invoice automatically — pick which one it pays for, or ignore it if it's unrelated (a non-invoice deposit, a refund, etc.).
+          </p>
+          {reconcileError && (
+            <p className="text-sm rounded-md px-3 py-2 mb-2" style={{ background: 'var(--panel)', color: 'var(--tally-alert)' }} role="alert">
+              {reconcileError}
+            </p>
+          )}
+          <ul className="space-y-2">
+            {unmatched.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+                <span className="text-sm font-mono flex-shrink-0">{formatMoney(t.amount, t.currency)}</span>
+                <span className="text-xs" style={{ color: 'var(--ink-muted)' }}>{new Date(t.transaction_date).toLocaleDateString()}</span>
+                {t.reference && <span className="text-xs truncate" style={{ color: 'var(--ink-muted)' }}>— "{t.reference}"</span>}
+                <select
+                  value={matchPicks[t.id] || ''}
+                  onChange={(e) => setMatchPicks((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                  className="text-sm rounded-md border px-2 py-1.5 ml-auto"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  <option value="">Match to invoice…</option>
+                  {invoices.filter((i) => i.status === 'sent').map((i) => (
+                    <option key={i.id} value={i.id}>{i.invoice_number} — {i.client_name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmMatch(t.id)}
+                  disabled={!matchPicks[t.id] || reconcileBusyId === t.id}
+                  className="text-xs rounded-md px-3 py-1.5 font-medium disabled:opacity-60"
+                  style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleIgnoreTransaction(t.id)}
+                  disabled={reconcileBusyId === t.id}
+                  className="text-xs disabled:opacity-60"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Ignore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {['all', 'draft', 'sent', 'overdue', 'paid', 'cancelled'].map((f) => (

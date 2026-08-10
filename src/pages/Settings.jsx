@@ -9,6 +9,12 @@ import {
   disconnectGoogleCalendar,
   syncGoogleCalendarNow,
 } from '../lib/googleCalendar'
+import {
+  getWiseReconcileStatus,
+  connectWiseReconcile,
+  disconnectWiseReconcile,
+  syncWiseReconcileNow,
+} from '../lib/wiseReconcile'
 
 export default function Settings() {
   const { activeOrgId, activeOrg, user } = useAuth()
@@ -86,6 +92,76 @@ export default function Settings() {
       setGoogleError(err.message)
     }
     setGoogleSyncing(false)
+  }
+
+  const [wiseStatus, setWiseStatus] = useState(null)
+  const [wiseTokenInput, setWiseTokenInput] = useState('')
+  const [wiseBusy, setWiseBusy] = useState(false)
+  const [wiseSyncing, setWiseSyncing] = useState(false)
+  const [wiseError, setWiseError] = useState('')
+  const [wiseNotice, setWiseNotice] = useState('')
+
+  const loadWiseStatus = useCallback(async () => {
+    if (!activeOrgId || !isAdmin) return
+    try {
+      setWiseStatus(await getWiseReconcileStatus(activeOrgId))
+    } catch (err) {
+      setWiseError(err.message)
+    }
+  }, [activeOrgId, isAdmin])
+
+  useEffect(() => { loadWiseStatus() }, [loadWiseStatus])
+
+  const handleWiseConnect = async (e) => {
+    e.preventDefault()
+    if (!wiseTokenInput.trim()) return
+    setWiseBusy(true)
+    setWiseError('')
+    setWiseNotice('')
+    try {
+      const result = await connectWiseReconcile(activeOrgId, wiseTokenInput.trim())
+      setWiseTokenInput('')
+      if (!result.supported) {
+        setWiseError(result.error)
+      } else {
+        setWiseNotice('Connected — Wise account confirmed eligible for auto-reconciliation.')
+      }
+      await loadWiseStatus()
+    } catch (err) {
+      setWiseError(err.message)
+    }
+    setWiseBusy(false)
+  }
+
+  const handleWiseDisconnect = async () => {
+    setWiseBusy(true)
+    setWiseError('')
+    setWiseNotice('')
+    try {
+      await disconnectWiseReconcile(activeOrgId)
+      await loadWiseStatus()
+    } catch (err) {
+      setWiseError(err.message)
+    }
+    setWiseBusy(false)
+  }
+
+  const handleWiseSyncNow = async () => {
+    setWiseSyncing(true)
+    setWiseError('')
+    setWiseNotice('')
+    try {
+      const result = await syncWiseReconcileNow(activeOrgId)
+      if (result.error) {
+        setWiseError(result.error)
+      } else {
+        setWiseNotice(`Synced — ${result.autoMatched} invoice(s) auto-marked paid, ${result.unmatched} transaction(s) need review.`)
+      }
+      await loadWiseStatus()
+    } catch (err) {
+      setWiseError(err.message)
+    }
+    setWiseSyncing(false)
   }
 
   const load = useCallback(async () => {
@@ -379,6 +455,93 @@ export default function Settings() {
           </p>
         )}
       </div>
+
+      {isAdmin && (
+        <div className="rounded-lg border p-5 space-y-4 mt-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+          <div>
+            <h2 className="font-display font-bold text-lg mb-1">Wise auto-reconciliation</h2>
+            <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+              Workspace-wide, admin-only — unlike Google Calendar above, this uses your team's shared Wise
+              Business account, not a personal one. Reads incoming transactions and auto-marks an invoice paid
+              when a payment's reference contains that invoice's number and the amount matches exactly.
+              Anything less certain shows up on the Invoices page for you to confirm by hand instead of
+              guessing. <span className="font-medium">Only works for Wise accounts based in the US, Canada,
+              Australia, New Zealand, Singapore, or Malaysia</span> — a restriction on Wise's own API, not
+              something this can work around. Connecting from an account outside those countries will tell
+              you so honestly rather than silently finding nothing.
+            </p>
+          </div>
+
+          {wiseStatus?.connected ? (
+            <div className="space-y-3">
+              {wiseStatus.supported === false ? (
+                <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }}>
+                  Connected, but this account's country doesn't support balance-statement access via the API — see above. The token is saved for whenever that changes, but syncing won't find anything until then.
+                </p>
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--tally-done)' }}>Connected — account confirmed eligible.</p>
+              )}
+              <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+                {wiseStatus.lastSyncedAt
+                  ? `Last synced ${new Date(wiseStatus.lastSyncedAt).toLocaleString()}`
+                  : 'Not synced yet.'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleWiseSyncNow}
+                  disabled={wiseSyncing || wiseBusy || wiseStatus.supported === false}
+                  className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  {wiseSyncing ? 'Reconciling…' : 'Reconcile now'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleWiseDisconnect}
+                  disabled={wiseBusy}
+                  className="text-sm disabled:opacity-60"
+                  style={{ color: 'var(--tally-alert)' }}
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleWiseConnect} className="flex flex-col sm:flex-row gap-2">
+              <label htmlFor="wise-token" className="sr-only">Wise personal API token</label>
+              <input
+                id="wise-token"
+                type="password"
+                value={wiseTokenInput}
+                onChange={(e) => setWiseTokenInput(e.target.value)}
+                placeholder="Paste your Wise personal API token…"
+                className="rounded-md border px-3 py-2 text-sm flex-1"
+                style={{ borderColor: 'var(--border)' }}
+              />
+              <button
+                type="submit"
+                disabled={wiseBusy || !wiseTokenInput.trim()}
+                className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60 flex-shrink-0"
+                style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+              >
+                {wiseBusy ? 'Connecting…' : 'Connect'}
+              </button>
+            </form>
+          )}
+
+          {wiseError && (
+            <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+              {wiseError}
+            </p>
+          )}
+          {wiseNotice && (
+            <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done)' }} role="status">
+              {wiseNotice}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
