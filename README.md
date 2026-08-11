@@ -40,7 +40,8 @@ src/
   context/        AuthContext (session, active org, auth actions)
   lib/            Supabase client, currency formatting, calendar helpers,
                   date-range presets, CSV export, role suggestions,
-                  file/attachment helpers, Google Calendar client helpers
+                  file/attachment helpers, Google Calendar client helpers,
+                  Wise reconciliation client helpers
   pages/          AuthPage, Dashboard, NewProject, MyTasks, ProjectDetail,
                   TaskDetail, Invoices, InvoiceForm, InvoiceDetail,
                   RecurringInvoices, RecurringInvoiceForm,
@@ -57,7 +58,11 @@ api/
   google-calendar-sync.js
                           Google Calendar two-way sync — see "How the
                           calendar works" below
-  _authHelpers.js, _googleAuth.js
+  wise-reconcile-connect.js, wise-reconcile-status.js,
+  wise-reconcile-disconnect.js, wise-reconcile-sync.js
+                          Wise auto-reconciliation — see "How invoicing
+                          works" below
+  _authHelpers.js, _googleAuth.js, _wiseAuth.js
                           Shared helpers, not routes themselves (leading
                           underscore excludes them from Vercel's route
                           discovery)
@@ -91,11 +96,14 @@ supabase/
   schema_project_attachments.sql  Extends attachments to work on projects
   schema_google_calendar_sync.sql  Google Calendar connections + per-person
                                     event id mappings (service-role only)
+  schema_wise_reconciliation.sql  Wise API connections (service-role only)
+                                   + pulled transactions with invoice matching
 cleanup_redundant_workspaces.sql
   ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
   sequence. See its own header before running.
 vercel.json
-  Cron schedule for the daily digest and Google Calendar sync functions
+  Cron schedule for the daily digest, Google Calendar sync, and Wise
+  reconciliation functions
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
@@ -271,7 +279,39 @@ public/
   link once (Wise → Payments → "Your open link", it doesn't expire) and
   paste it into Settings. Every invoice you generate then automatically
   displays that link plus a note asking the client to enter the invoice
-  number as their payment reference, so you can match payments manually.
+  number as their payment reference, so you can match payments manually —
+  or automatically, if the account qualifies, see below.
+- **Wise auto-reconciliation — real, but genuinely restricted to accounts
+  in certain countries.** Settings has a separate, admin-only, workspace-
+  wide card for this (org-scoped, unlike Google Calendar's personal
+  connection — a Wise Business account belongs to the company, not one
+  person). Paste a Wise personal API token there and, for eligible
+  accounts, a daily background sync (plus an on-demand "Reconcile now")
+  reads incoming transactions and auto-marks an invoice paid when a
+  payment's reference contains that invoice's number and the amount
+  matches exactly. Anything less certain — ambiguous reference, amount
+  mismatch, no reference at all — lands in an "Unmatched Wise
+  transactions" panel on the Invoices page for a human to confirm or
+  dismiss by hand, rather than being guessed at.
+  - **The restriction, plainly:** Wise's own personal-API-token system
+    only allows reading balance statements (the thing this needs) for
+    accounts based in the **US, Canada, Australia, New Zealand,
+    Singapore, or Malaysia** — a limit on Wise's side, not something this
+    feature can work around. Connecting an account outside that list
+    still saves the token, but the connect step probes the API right
+    away and shows an honest message if the account isn't eligible,
+    rather than silently connecting and never finding anything.
+  - **Built generically per-org on purpose**, even though it won't do
+    anything for every workspace — Pipeline is multi-tenant, and whether
+    this works depends entirely on which country a given org's own Wise
+    account is registered in, nothing to do with the app itself.
+  - **Untested against a live eligible account**, worth being upfront
+    about — built carefully against Wise's documented API behavior, but
+    without an actual eligible Wise Business account to connect during
+    development, there's a real chance a field name or response shape in
+    `api/_wiseAuth.js` needs a small adjustment the first time someone
+    with a qualifying account actually tries it. Treat this as "ready to
+    try, not yet proven," not "definitely works."
 - Status (draft/sent/paid/cancelled) is tracked per invoice; "overdue" is
   computed automatically in the UI when a sent invoice's due date has passed
   — no separate status to remember to set.

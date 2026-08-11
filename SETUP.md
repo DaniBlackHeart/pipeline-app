@@ -78,20 +78,24 @@ through or you're not sure whether it already ran, just run it again.
     tables for Google Calendar sync, both service-role-only — nothing to
     configure here yet, that's section 6 below, only needed if you want
     that feature at all).
-22. Go to **Project Settings → API**. Copy:
+22. Then paste and run `supabase/schema_wise_reconciliation.sql` (two new
+    tables for Wise auto-reconciliation, same service-role-only pattern —
+    nothing to configure here yet either, that's section 7 below).
+23. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
       `VITE_SUPABASE_ANON_KEY`
     - **service_role key** (may be labeled **"Secret key"** in newer
-      projects, formatted like `sb_secret_...`) → this is needed for three
+      projects, formatted like `sb_secret_...`) → this is needed for four
       optional server-side features: the daily digest (section 4),
-      inviting teammates (section 5), and Google Calendar sync (section
-      6). Skip all three and you can skip this key entirely. If you use
-      any of them, keep it aside for those sections. **Never** put it in
-      `.env.example`, never prefix it `VITE_` (that would bundle it into
-      client-side JS), never commit it anywhere.
-23. (Optional, recommended for real use) Under **Authentication → Providers →
+      inviting teammates (section 5), Google Calendar sync (section 6),
+      and Wise auto-reconciliation (section 7). Skip all four and you can
+      skip this key entirely. If you use any of them, keep it aside for
+      those sections. **Never** put it in `.env.example`, never prefix it
+      `VITE_` (that would bundle it into client-side JS), never commit it
+      anywhere.
+24. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -357,7 +361,44 @@ which is a bigger lift than this warranted for a first version).
    land back on Settings connected. Click **Sync now** to pull in whatever
    already exists on that Google Calendar.
 
-## 7. Try it
+## 7. Optional: Wise auto-reconciliation
+
+Skip this if you don't need it — invoices work fine without it, just
+requiring you to mark them paid by hand. This one's simpler to set up than
+Google Calendar sync (no OAuth, no Google Cloud project), but it's worth
+knowing upfront that it **only works for Wise accounts based in the US,
+Canada, Australia, New Zealand, Singapore, or Malaysia** — a restriction
+on Wise's own API, not something around here. If your Wise account isn't
+in one of those countries, this section will still let you connect (and
+tell you honestly that it won't find anything), but there's no path
+around that restriction short of Wise changing their own policy.
+
+**Also worth knowing:** this was built carefully against Wise's
+documented API, but without an actual eligible account to test end-to-end
+during development. Treat it as "ready to try, not yet proven" the first
+time you connect a real qualifying account — see `api/_wiseAuth.js` if a
+field name or response shape needs a small adjustment.
+
+1. Log into your Wise account (Business account required — personal
+   accounts can't generate API tokens at all) → **Your Account →
+   Integrations and tools → API tokens** (exact wording may vary slightly
+   depending on Wise's current dashboard layout).
+2. Create a **personal API token**. Copy it — like the Supabase service
+   role key, this is a real secret; don't paste it anywhere public, and
+   don't put it in `.env.example`.
+3. In Pipeline, go to **Settings** (as an admin/owner — this card doesn't
+   show for regular members) and paste the token into the **Wise
+   auto-reconciliation** card, click **Connect**.
+4. Pipeline immediately tries a real API call to check whether this
+   account's country supports it. If it does, you'll see "Connected —
+   account confirmed eligible." If not, you'll see the honest explanation
+   instead — the token is still saved either way, so nothing needs
+   redoing if the account's status ever changes.
+5. If eligible, click **Reconcile now** to pull the last 30 days of
+   transactions and see it match against any open invoices. From then on,
+   it also runs automatically once a day.
+
+## 8. Try it
 
 1. Visit the deployed URL (or localhost), sign up with an email + password.
 2. On signup, a personal workspace ("Your Name's Workspace") is created for
@@ -385,7 +426,10 @@ which is a bigger lift than this warranted for a first version).
    already), and a couple of line items, then save. Open it and hit
    **Print / Save as PDF** to see the client-facing version — a
    placeholder "PMA" brand mark instead of your workspace name, and the
-   payment link embedded.
+   payment link embedded. If you deployed section 7, that invoice's number
+   (e.g. "INV-0004") is exactly what auto-reconciliation looks for in a
+   payment's reference text, so a real client payment referencing it
+   correctly gets matched automatically.
 6. Go to **Calendar** — your project and task due dates already show up
    automatically. Click a day and add a standalone event (a client call,
    a shoot day) to see it merge in alongside them. If you deployed section
@@ -427,10 +471,12 @@ which is a bigger lift than this warranted for a first version).
     renumbers down to "File 1" too — the numbering is always just
     position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
-    step 8 there and confirm you get a response back. If you also deployed
-    Google Calendar sync (section 6), the same idea works for its cron
-    endpoint: `curl -X POST https://your-app.vercel.app/api/google-calendar-sync -H "Authorization: Bearer YOUR_CRON_SECRET"` —
-    should return a JSON summary of connections processed.
+    step 8 there and confirm you get a response back. Same idea for the
+    other two cron jobs if you deployed them: Google Calendar sync
+    (section 6) — `curl -X POST https://your-app.vercel.app/api/google-calendar-sync -H "Authorization: Bearer YOUR_CRON_SECRET"` —
+    and Wise reconciliation (section 7) —
+    `curl -X POST https://your-app.vercel.app/api/wise-reconcile-sync -H "Authorization: Bearer YOUR_CRON_SECRET"`
+    — both should return a JSON summary rather than an error.
 14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the Owner, so you'll see the invite form. If you deployed
     section 5, try inviting a second email (even one of your own alt
@@ -633,6 +679,33 @@ which is a bigger lift than this warranted for a first version).
   Production (see setup section 6, step 8) — not a bug, a real Google
   policy for unverified apps. Easy to miss if you only test it once and
   move on.
+- **Wise auto-reconciliation only works for accounts based in the US,
+  Canada, Australia, New Zealand, Singapore, or Malaysia** — a real
+  restriction on Wise's own personal-API-token system, not something
+  built around it here. Connecting from anywhere else still saves the
+  token and says so honestly, but there's no functional path around it
+  short of Wise changing their own policy.
+- **Wise reconciliation requires a Business account** — personal Wise
+  accounts can't generate an API token at all, so there's nothing to
+  connect until that's upgraded (separately from the country
+  restriction above, which still applies after upgrading).
+- **Untested against a live eligible Wise account.** Built carefully
+  against Wise's documented API, but there was no actual qualifying
+  account available to connect and verify end-to-end during development
+  — unlike Google Calendar sync, which was. Treat the first real
+  connection from an eligible account as the actual test; a field name
+  or response shape in `api/_wiseAuth.js` may need a small fix.
+- **Matching is deliberately conservative, not exhaustive.** Auto-match
+  requires the invoice number to appear in the payment's reference text
+  AND the amount/currency to match exactly — a payment with a slightly
+  different amount (a bank fee taken out, a partial payment) or no
+  reference at all won't auto-match, and shows up in the "Unmatched Wise
+  transactions" panel on Invoices for a human to confirm instead. This is
+  intentional: guessing wrong on financial reconciliation is a real
+  mistake, not a cosmetic one.
+- **Wise sync only looks at incoming (CREDIT) transactions** — outgoing
+  payments, fees, and currency conversions on the connected balance are
+  never touched or reconciled against anything.
 
 ## Where to check for errors after launch
 
