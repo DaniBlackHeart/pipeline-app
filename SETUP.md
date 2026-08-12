@@ -523,6 +523,15 @@ field name or response shape needs a small adjustment.
     what kind of thing it was, all in one combined timeline. Open a ticket
     or invoice directly and its own **Activity** section shows just that
     one thing's history.
+21. Go to **Settings** and click **Enable two-factor authentication** —
+    scan the QR code with an authenticator app (Google Authenticator,
+    Authy, 1Password, etc.), enter the 6-digit code it shows to confirm.
+    Then **log out and log back in** with your password — you should now
+    land on a "Enter your 6-digit code" screen before reaching the app,
+    not straight through. Try navigating directly to a URL like
+    `/settings` while that challenge is still outstanding (open a new tab
+    and paste the URL, rather than clicking through the login form) to
+    confirm it redirects back to the challenge instead of letting you in.
 
 ## Known limitations to know about
 
@@ -706,6 +715,17 @@ field name or response shape needs a small adjustment.
 - **Wise sync only looks at incoming (CREDIT) transactions** — outgoing
   payments, fees, and currency conversions on the connected balance are
   never touched or reconciled against anything.
+- **Two-factor authentication gates the app's own login and every
+  protected route, not the database directly.** RLS policies don't
+  independently re-check assurance level (aal2) — the honest read is
+  this protects against someone getting in through Pipeline's login
+  screen with just a stolen or guessed password, not against someone who
+  already has a valid session token going around the UI entirely.
+- **No account recovery inside Pipeline if someone loses their
+  authenticator device.** No backup codes, no "admin resets a teammate's
+  2FA" button on Team yet — today the fix is the workspace owner going
+  into the Supabase dashboard directly (Authentication → Users → that
+  person → remove their MFA factor).
 
 ## Where to check for errors after launch
 

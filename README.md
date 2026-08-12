@@ -587,6 +587,43 @@ not just an editable row. What's there:
   change your own role or remove yourself, and won't let anyone demote or
   remove the last remaining owner of a workspace.
 
+## How two-factor authentication works
+
+- **Built entirely on Supabase's own MFA support** — no new schema, no
+  third-party service. `auth.mfa.enroll()` for a QR code and manual-entry
+  secret, `challengeAndVerify()` to confirm it and (later) to log in.
+- **Personal, opt-in, per person** — Settings has an "Enable two-factor
+  authentication" card, same section as the notification preferences
+  above it. Turning it on only affects your own login; nothing about a
+  workspace or its other members changes.
+- **Sign-in itself never fails or blocks because of MFA** — that's not how
+  Supabase's model works. `signInWithPassword` succeeds and issues a real
+  session either way; if that account has MFA enrolled, the session comes
+  back at a lower "assurance level" (aal1) until the second factor is
+  verified, and the app is responsible for noticing that and gating on
+  it. `AuthContext` checks this on every auth event and exposes
+  `needsMfaChallenge`; `AuthPage` shows the 6-digit code screen when it's
+  true instead of the normal redirect into the app.
+- **This gates the app's own UI, not the database directly.** Every
+  protected route checks `needsMfaChallenge` (not just the login form —
+  navigating straight to a URL with a pending challenge redirects back to
+  it too), so nothing in the app itself is reachable without completing
+  MFA. What this *doesn't* do: independently re-check aal2 inside RLS
+  policies table-by-table. For a small team's internal tool, the honest
+  read is that this protects against someone getting into Pipeline
+  through its own login screen with just a stolen or guessed password —
+  it isn't a defense against someone who's already obtained a valid
+  session token going around the UI entirely and querying Supabase
+  directly. Worth knowing, not something that needed solving for what
+  this is.
+- **No in-app recovery if someone loses their authenticator device.**
+  Supabase doesn't provide backup codes the way some auth providers do,
+  and there's no "admin resets a teammate's 2FA" button in Team yet — if
+  someone gets locked out, the practical fix today is the workspace
+  owner going into the Supabase dashboard directly (Authentication →
+  Users → that person → remove their MFA factor) rather than anything
+  inside Pipeline itself. Worth building if this comes up for real.
+
 ## How the activity log works
 
 - **One unified log, not four separate ones.** Tasks, tickets, invoices,
