@@ -30,7 +30,7 @@ function PageFallback() {
 }
 
 function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
+  const { user, loading, needsMfaChallenge } = useAuth()
 
   if (loading) {
     return (
@@ -41,6 +41,11 @@ function ProtectedRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+  // A session existing isn't enough if this account has MFA enrolled and
+  // the second factor hasn't been verified yet this session — otherwise
+  // navigating straight to a URL (not just the login form) would skip the
+  // challenge entirely. AuthPage renders the actual challenge screen.
+  if (needsMfaChallenge) return <Navigate to="/login" replace />
 
   return (
     <AppShell>

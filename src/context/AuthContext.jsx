@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [orgs, setOrgs] = useState([])
   const [activeOrgId, setActiveOrgId] = useState(null)
+  const [mfaLevel, setMfaLevel] = useState(null) // { current, next } | null
 
   const loadOrgs = useCallback(async (userId) => {
     if (!userId) {
@@ -33,6 +34,26 @@ export function AuthProvider({ children }) {
     setActiveOrgId((current) => current || list[0]?.id || null)
   }, [])
 
+  // A session existing doesn't mean fully authenticated if this person has
+  // MFA enrolled — `signInWithPassword` (and every other sign-in method)
+  // succeeds and issues a real session either way, at aal1. Supabase's own
+  // model puts the responsibility on the app to check whether a step-up
+  // to aal2 is still outstanding and gate on that, rather than sign-in
+  // itself failing/blocking. This refreshes on every auth event so it
+  // stays correct through login, MFA verification, and enroll/unenroll.
+  const refreshMfaLevel = useCallback(async (hasSession) => {
+    if (!hasSession) {
+      setMfaLevel(null)
+      return
+    }
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (error) {
+      setMfaLevel(null)
+      return
+    }
+    setMfaLevel({ current: data.currentLevel, next: data.nextLevel })
+  }, [])
+
   useEffect(() => {
     let isMounted = true
 
@@ -40,19 +61,21 @@ export function AuthProvider({ children }) {
       if (!isMounted) return
       setSession(data.session)
       loadOrgs(data.session?.user?.id)
+      refreshMfaLevel(Boolean(data.session))
       setLoading(false)
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       loadOrgs(newSession?.user?.id)
+      refreshMfaLevel(Boolean(newSession))
     })
 
     return () => {
       isMounted = false
       listener?.subscription?.unsubscribe()
     }
-  }, [loadOrgs])
+  }, [loadOrgs, refreshMfaLevel])
 
   const signUp = async ({ email, password, fullName }) => {
     const { data, error } = await supabase.auth.signUp({
@@ -84,6 +107,11 @@ export function AuthProvider({ children }) {
     signIn,
     signOut,
     refreshOrgs: () => loadOrgs(session?.user?.id),
+    // True right after a password (or any) sign-in on an account that has
+    // MFA enrolled, until the second factor is verified. AuthPage checks
+    // this before redirecting into the app.
+    needsMfaChallenge: Boolean(mfaLevel && mfaLevel.next === 'aal2' && mfaLevel.current !== 'aal2'),
+    refreshMfaLevel: () => refreshMfaLevel(Boolean(session)),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

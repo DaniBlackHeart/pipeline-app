@@ -11,7 +11,7 @@ const authFlowType = typeof window !== 'undefined' ? sessionStorage.getItem('pip
 const isPasswordSetupFlow = authFlowType === 'invite' || authFlowType === 'recovery'
 
 export default function AuthPage() {
-  const { user, signIn, signUp } = useAuth()
+  const { user, signIn, signUp, signOut, needsMfaChallenge, refreshMfaLevel } = useAuth()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('')
@@ -24,8 +24,114 @@ export default function AuthPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
-  // Normal case: already logged in, not mid invite/reset -> go straight into the app.
-  if (user && !isPasswordSetupFlow) return <Navigate to="/" replace />
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaError, setMfaError] = useState('')
+  const [mfaSubmitting, setMfaSubmitting] = useState(false)
+
+  // Normal case: already logged in, not mid invite/reset, and (if this
+  // account has MFA enrolled) already past the second-factor check.
+  if (user && !isPasswordSetupFlow && !needsMfaChallenge) return <Navigate to="/" replace />
+
+  if (user && needsMfaChallenge && !isPasswordSetupFlow) {
+    const handleMfaVerify = async (e) => {
+      e.preventDefault()
+      setMfaError('')
+      if (mfaCode.trim().length !== 6) {
+        setMfaError('Enter the 6-digit code from your authenticator app.')
+        return
+      }
+      setMfaSubmitting(true)
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
+      if (factorsError) {
+        setMfaError(factorsError.message)
+        setMfaSubmitting(false)
+        return
+      }
+      const factor = factorsData?.totp?.find((f) => f.status === 'verified')
+      if (!factor) {
+        setMfaError("Couldn't find your authenticator — try signing in again.")
+        setMfaSubmitting(false)
+        return
+      }
+      const { error: verifyError } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: factor.id,
+        code: mfaCode.trim(),
+      })
+      setMfaSubmitting(false)
+      if (verifyError) {
+        setMfaError(verifyError.message)
+        return
+      }
+      await refreshMfaLevel()
+      navigate('/')
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+        <div className="w-full max-w-sm">
+          <div className="flex items-center gap-2 mb-8 justify-center">
+            <span
+              className="h-9 w-9 rounded-md flex items-center justify-center font-display font-bold"
+              style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+              aria-hidden="true"
+            >
+              P
+            </span>
+            <span className="font-display font-bold text-2xl tracking-tight">PIPELINE</span>
+          </div>
+
+          <div className="rounded-lg border p-6 sm:p-8" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+            <h1 className="font-display font-bold text-xl mb-1">Two-factor authentication</h1>
+            <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>
+              Enter the 6-digit code from your authenticator app.
+            </p>
+
+            <form onSubmit={handleMfaVerify} className="space-y-4" noValidate>
+              <div>
+                <label htmlFor="mfaCode" className="sr-only">6-digit code</label>
+                <input
+                  id="mfaCode"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="w-full rounded-md border px-3 py-2 text-center text-lg tracking-[0.5em] font-mono"
+                  style={{ borderColor: 'var(--border)' }}
+                  autoFocus
+                />
+              </div>
+
+              {mfaError && (
+                <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+                  {mfaError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={mfaSubmitting}
+                className="w-full rounded-md py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity"
+                style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+              >
+                {mfaSubmitting ? 'Verifying…' : 'Verify'}
+              </button>
+            </form>
+
+            <button
+              onClick={() => signOut()}
+              className="w-full text-center text-sm mt-5"
+              style={{ color: 'var(--ink-muted)' }}
+            >
+              Not you? Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Invite or password-reset case: Supabase's own client auto-establishes a
   // session from the email link's token (that's what detectSessionInUrl is
