@@ -17,7 +17,7 @@ import {
 } from '../lib/wiseReconcile'
 
 export default function Settings() {
-  const { activeOrgId, activeOrg, user } = useAuth()
+  const { activeOrgId, activeOrg, user, refreshMfaLevel } = useAuth()
   const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
 
   const [wiseLink, setWiseLink] = useState('')
@@ -162,6 +162,86 @@ export default function Settings() {
       setWiseError(err.message)
     }
     setWiseSyncing(false)
+  }
+
+  const [mfaFactor, setMfaFactor] = useState(null) // the verified TOTP factor, if any
+  const [mfaEnrollment, setMfaEnrollment] = useState(null) // { factorId, qrCode, secret } while mid-setup
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaBusy, setMfaBusy] = useState(false)
+  const [mfaError, setMfaError] = useState('')
+  const [mfaNotice, setMfaNotice] = useState('')
+  const [mfaConfirmingDisable, setMfaConfirmingDisable] = useState(false)
+
+  const loadMfaFactor = useCallback(async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) return
+    setMfaFactor(data?.totp?.find((f) => f.status === 'verified') || null)
+  }, [])
+
+  useEffect(() => { loadMfaFactor() }, [loadMfaFactor])
+
+  const handleMfaEnrollStart = async () => {
+    setMfaBusy(true)
+    setMfaError('')
+    setMfaNotice('')
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+    setMfaBusy(false)
+    if (error) {
+      setMfaError(error.message)
+      return
+    }
+    setMfaEnrollment({ factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
+  }
+
+  const handleMfaEnrollCancel = async () => {
+    if (mfaEnrollment) {
+      // Clean up the unverified factor Supabase already created — leaving
+      // it dangling could block starting a fresh enrollment later.
+      await supabase.auth.mfa.unenroll({ factorId: mfaEnrollment.factorId })
+    }
+    setMfaEnrollment(null)
+    setMfaCode('')
+    setMfaError('')
+  }
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault()
+    if (mfaCode.trim().length !== 6) {
+      setMfaError('Enter the 6-digit code from your authenticator app.')
+      return
+    }
+    setMfaBusy(true)
+    setMfaError('')
+    const { error } = await supabase.auth.mfa.challengeAndVerify({
+      factorId: mfaEnrollment.factorId,
+      code: mfaCode.trim(),
+    })
+    setMfaBusy(false)
+    if (error) {
+      setMfaError(error.message)
+      return
+    }
+    setMfaEnrollment(null)
+    setMfaCode('')
+    setMfaNotice("Two-factor authentication is on. You'll be asked for a code like this every time you log in from here on.")
+    await loadMfaFactor()
+    await refreshMfaLevel()
+  }
+
+  const handleMfaDisable = async () => {
+    setMfaBusy(true)
+    setMfaError('')
+    setMfaNotice('')
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactor.id })
+    setMfaBusy(false)
+    setMfaConfirmingDisable(false)
+    if (error) {
+      setMfaError(error.message)
+      return
+    }
+    setMfaNotice('Two-factor authentication is off.')
+    await loadMfaFactor()
+    await refreshMfaLevel()
   }
 
   const load = useCallback(async () => {
@@ -542,6 +622,125 @@ export default function Settings() {
           )}
         </div>
       )}
+
+      <div className="rounded-lg border p-5 space-y-4 mt-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <div>
+          <h2 className="font-display font-bold text-lg mb-1">Two-factor authentication</h2>
+          <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+            Personal, like the notification settings — this protects your own login, not the workspace as a
+            whole. Once it's on, logging in needs a 6-digit code from an authenticator app (Google
+            Authenticator, Authy, 1Password, etc.) in addition to your password.
+          </p>
+        </div>
+
+        {mfaEnrollment ? (
+          <form onSubmit={handleMfaVerify} className="space-y-3">
+            <p className="text-sm">Scan this with your authenticator app:</p>
+            <img
+              src={mfaEnrollment.qrCode}
+              alt="Scan this QR code with your authenticator app"
+              className="rounded-md border"
+              style={{ borderColor: 'var(--border)', width: 180, height: 180 }}
+            />
+            <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+              Can't scan it? Enter this code manually instead:{' '}
+              <span className="font-mono select-all">{mfaEnrollment.secret}</span>
+            </p>
+            <div>
+              <label htmlFor="mfa-enroll-code" className="block text-sm font-medium mb-1">
+                Then enter the 6-digit code it shows
+              </label>
+              <input
+                id="mfa-enroll-code"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="rounded-md border px-3 py-2 text-center text-lg tracking-[0.5em] font-mono"
+                style={{ borderColor: 'var(--border)', width: 180 }}
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={mfaBusy}
+                className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
+                style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+              >
+                {mfaBusy ? 'Verifying…' : 'Verify and enable'}
+              </button>
+              <button
+                type="button"
+                onClick={handleMfaEnrollCancel}
+                disabled={mfaBusy}
+                className="rounded-md px-4 py-2 text-sm font-medium border disabled:opacity-60"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : mfaFactor ? (
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: 'var(--tally-done)' }}>Two-factor authentication is on.</p>
+            {mfaConfirmingDisable ? (
+              <div className="flex items-center gap-3">
+                <p className="text-sm" style={{ color: 'var(--tally-alert)' }}>Turn it off?</p>
+                <button
+                  type="button"
+                  onClick={handleMfaDisable}
+                  disabled={mfaBusy}
+                  className="text-sm rounded-md px-3 py-1.5 font-medium disabled:opacity-60"
+                  style={{ background: 'var(--tally-alert)', color: 'var(--panel)' }}
+                >
+                  {mfaBusy ? 'Turning off…' : 'Yes, turn off'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMfaConfirmingDisable(false)}
+                  className="text-sm"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Never mind
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMfaConfirmingDisable(true)}
+                className="text-sm"
+                style={{ color: 'var(--tally-alert)' }}
+              >
+                Disable
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleMfaEnrollStart}
+            disabled={mfaBusy}
+            className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
+            style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+          >
+            {mfaBusy ? 'Starting…' : 'Enable two-factor authentication'}
+          </button>
+        )}
+
+        {mfaError && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+            {mfaError}
+          </p>
+        )}
+        {mfaNotice && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done)' }} role="status">
+            {mfaNotice}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
