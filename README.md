@@ -62,7 +62,11 @@ api/
   wise-reconcile-disconnect.js, wise-reconcile-sync.js
                           Wise auto-reconciliation — see "How invoicing
                           works" below
-  _authHelpers.js, _googleAuth.js, _wiseAuth.js
+  mfa-generate-backup-codes.js, mfa-backup-codes-status.js,
+  mfa-recover.js
+                          2FA backup-code recovery — see "How two-factor
+                          authentication works" below
+  _authHelpers.js, _googleAuth.js, _wiseAuth.js, _mfaBackupCodes.js
                           Shared helpers, not routes themselves (leading
                           underscore excludes them from Vercel's route
                           discovery)
@@ -98,6 +102,8 @@ supabase/
                                     event id mappings (service-role only)
   schema_wise_reconciliation.sql  Wise API connections (service-role only)
                                    + pulled transactions with invoice matching
+  schema_mfa_backup_codes.sql   2FA backup/recovery codes, salted and hashed
+                                 (service-role only)
 cleanup_redundant_workspaces.sql
   ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
   sequence. See its own header before running.
@@ -616,13 +622,35 @@ not just an editable row. What's there:
   session token going around the UI entirely and querying Supabase
   directly. Worth knowing, not something that needed solving for what
   this is.
-- **No in-app recovery if someone loses their authenticator device.**
-  Supabase doesn't provide backup codes the way some auth providers do,
-  and there's no "admin resets a teammate's 2FA" button in Team yet — if
-  someone gets locked out, the practical fix today is the workspace
-  owner going into the Supabase dashboard directly (Authentication →
-  Users → that person → remove their MFA factor) rather than anything
-  inside Pipeline itself. Worth building if this comes up for real.
+- **Recovery, for real, via backup codes — but worth understanding how it
+  actually works under the hood.** Supabase doesn't provide backup codes
+  natively, so these are built on top: 10 single-use codes, generated
+  automatically right after enrolling (shown once, save-them-now
+  warning), regeneratable anytime from Settings. Here's the part worth
+  being precise about: a backup code can't act as a substitute for a real
+  TOTP check, because promoting a session to aal2 is something only
+  Supabase's own `auth.mfa.verify()` can do — nothing outside it has that
+  power. So instead of pretending to "pass" the challenge, entering a
+  valid backup code at login (via "Lost your device? Use a backup code")
+  **removes the lost authenticator entirely** through the Supabase Admin
+  API, which doesn't care what assurance level the caller's own session
+  is at. That makes the account stop requiring aal2 at all, so a normal
+  password login works immediately afterward. Re-enabling 2FA (and
+  getting a fresh set of codes) is a separate, deliberate step from
+  Settings once back in — using a backup code is a full reset, not a
+  one-time bypass that leaves the old authenticator still configured.
+- **The backup-code recovery endpoint (`api/mfa-recover.js`) uses
+  Supabase's Admin API to remove the factor — built against their
+  documented conventions but not verified against a live call during
+  development**, same honest caveat as the Wise integration. If the
+  admin user endpoint's response shape or the delete-factor path differs
+  even slightly from what's documented, that file is the first place to
+  check.
+- **Still no "admin resets a teammate's 2FA" button in Team** — backup
+  codes cover the normal "lost my phone" case, but if someone loses both
+  their authenticator *and* their saved codes, the practical fix is still
+  the workspace owner going into the Supabase dashboard directly
+  (Authentication → Users → that person → remove their MFA factor).
 
 ## How the activity log works
 

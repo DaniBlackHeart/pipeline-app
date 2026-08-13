@@ -81,21 +81,25 @@ through or you're not sure whether it already ran, just run it again.
 22. Then paste and run `supabase/schema_wise_reconciliation.sql` (two new
     tables for Wise auto-reconciliation, same service-role-only pattern —
     nothing to configure here yet either, that's section 7 below).
-23. Go to **Project Settings → API**. Copy:
+23. Then paste and run `supabase/schema_mfa_backup_codes.sql` (one new
+    table for 2FA backup-code recovery, same service-role-only pattern —
+    no separate setup section for this one, it just works once this is
+    run and the service role key below is in place).
+24. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
       `VITE_SUPABASE_ANON_KEY`
     - **service_role key** (may be labeled **"Secret key"** in newer
-      projects, formatted like `sb_secret_...`) → this is needed for four
+      projects, formatted like `sb_secret_...`) → this is needed for five
       optional server-side features: the daily digest (section 4),
       inviting teammates (section 5), Google Calendar sync (section 6),
-      and Wise auto-reconciliation (section 7). Skip all four and you can
-      skip this key entirely. If you use any of them, keep it aside for
-      those sections. **Never** put it in `.env.example`, never prefix it
-      `VITE_` (that would bundle it into client-side JS), never commit it
-      anywhere.
-24. (Optional, recommended for real use) Under **Authentication → Providers →
+      Wise auto-reconciliation (section 7), and 2FA backup-code recovery.
+      Skip all five and you can skip this key entirely. If you use any of
+      them, keep it aside for those sections. **Never** put it in
+      `.env.example`, never prefix it `VITE_` (that would bundle it into
+      client-side JS), never commit it anywhere.
+25. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
 
@@ -526,12 +530,22 @@ field name or response shape needs a small adjustment.
 21. Go to **Settings** and click **Enable two-factor authentication** —
     scan the QR code with an authenticator app (Google Authenticator,
     Authy, 1Password, etc.), enter the 6-digit code it shows to confirm.
-    Then **log out and log back in** with your password — you should now
-    land on a "Enter your 6-digit code" screen before reaching the app,
-    not straight through. Try navigating directly to a URL like
+    Right after, you'll see 10 backup codes shown once — save a couple
+    somewhere for the next step, then check the acknowledgment box and
+    click Done. Then **log out and log back in** with your password — you
+    should now land on a "Enter your 6-digit code" screen before reaching
+    the app, not straight through. Try navigating directly to a URL like
     `/settings` while that challenge is still outstanding (open a new tab
     and paste the URL, rather than clicking through the login form) to
     confirm it redirects back to the challenge instead of letting you in.
+22. On that same challenge screen, click **"Lost your device? Use a
+    backup code"** and enter one of the codes you saved. You should land
+    back in the app with a notice that 2FA was turned off — check
+    Settings to confirm it shows the "Enable two-factor authentication"
+    button again rather than "on," meaning the reset actually took (this
+    is the one part of this whole setup process built without being able
+    to test it against a live call beforehand — genuinely worth
+    confirming it works, not just skimming past).
 
 ## Known limitations to know about
 
@@ -721,11 +735,24 @@ field name or response shape needs a small adjustment.
   this protects against someone getting in through Pipeline's login
   screen with just a stolen or guessed password, not against someone who
   already has a valid session token going around the UI entirely.
-- **No account recovery inside Pipeline if someone loses their
-  authenticator device.** No backup codes, no "admin resets a teammate's
-  2FA" button on Team yet — today the fix is the workspace owner going
-  into the Supabase dashboard directly (Authentication → Users → that
-  person → remove their MFA factor).
+- **A backup code doesn't "pass" the MFA challenge — it removes the
+  authenticator entirely.** Only Supabase's own `auth.mfa.verify()` can
+  promote a session to aal2, so a valid backup code instead uses the
+  Admin API to delete the lost factor, which makes the account stop
+  requiring aal2 at all. Using a code is a full 2FA reset, not a
+  one-time bypass — the person logs in with just their password
+  afterward and re-enables 2FA (getting a fresh set of codes) from
+  Settings if they want it back on, separately.
+- **`api/mfa-recover.js` uses Supabase's Admin API to remove a factor —
+  built against their documented conventions but not verified against a
+  live call during development**, same caveat as the Wise integration.
+  Worth actually testing (see Try It, step 22) rather than assuming it
+  works.
+- **Still no "admin resets a teammate's 2FA" button on Team.** Backup
+  codes cover the normal "lost my phone" case; if someone loses both
+  their authenticator *and* their saved codes, the fix is still the
+  workspace owner going into the Supabase dashboard directly
+  (Authentication → Users → that person → remove their MFA factor).
 
 ## Where to check for errors after launch
 
