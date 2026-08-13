@@ -15,6 +15,7 @@ import {
   disconnectWiseReconcile,
   syncWiseReconcileNow,
 } from '../lib/wiseReconcile'
+import { generateBackupCodes, getBackupCodesRemaining } from '../lib/mfaBackupCodes'
 
 export default function Settings() {
   const { activeOrgId, activeOrg, user, refreshMfaLevel } = useAuth()
@@ -171,12 +172,27 @@ export default function Settings() {
   const [mfaError, setMfaError] = useState('')
   const [mfaNotice, setMfaNotice] = useState('')
   const [mfaConfirmingDisable, setMfaConfirmingDisable] = useState(false)
+  const [backupCodes, setBackupCodes] = useState(null) // freshly generated plaintext codes, shown once
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState(null)
+  const [backupCodesBusy, setBackupCodesBusy] = useState(false)
+  const [backupCodesSaved, setBackupCodesSaved] = useState(false)
+
+  const loadBackupCodesRemaining = useCallback(async () => {
+    try {
+      const result = await getBackupCodesRemaining()
+      setBackupCodesRemaining(result.remaining)
+    } catch {
+      // Not enrolled in 2FA yet, or nothing to report — leave it null.
+    }
+  }, [])
 
   const loadMfaFactor = useCallback(async () => {
     const { data, error } = await supabase.auth.mfa.listFactors()
     if (error) return
-    setMfaFactor(data?.totp?.find((f) => f.status === 'verified') || null)
-  }, [])
+    const factor = data?.totp?.find((f) => f.status === 'verified') || null
+    setMfaFactor(factor)
+    if (factor) loadBackupCodesRemaining()
+  }, [loadBackupCodesRemaining])
 
   useEffect(() => { loadMfaFactor() }, [loadMfaFactor])
 
@@ -226,6 +242,21 @@ export default function Settings() {
     setMfaNotice("Two-factor authentication is on. You'll be asked for a code like this every time you log in from here on.")
     await loadMfaFactor()
     await refreshMfaLevel()
+
+    // Generate backup codes right away, same turn as enrolling — standard
+    // practice (GitHub, Google, etc. all do this), since the whole point
+    // is having them ready *before* the day the authenticator is lost,
+    // not after.
+    setBackupCodesBusy(true)
+    try {
+      const result = await generateBackupCodes()
+      setBackupCodes(result.codes)
+      setBackupCodesSaved(false)
+      await loadBackupCodesRemaining()
+    } catch (err) {
+      setMfaError(`2FA is on, but generating backup codes failed: ${err.message}. Try "Generate new codes" below.`)
+    }
+    setBackupCodesBusy(false)
   }
 
   const handleMfaDisable = async () => {
@@ -242,6 +273,20 @@ export default function Settings() {
     setMfaNotice('Two-factor authentication is off.')
     await loadMfaFactor()
     await refreshMfaLevel()
+  }
+
+  const handleGenerateNewBackupCodes = async () => {
+    setBackupCodesBusy(true)
+    setMfaError('')
+    try {
+      const result = await generateBackupCodes()
+      setBackupCodes(result.codes)
+      setBackupCodesSaved(false)
+      await loadBackupCodesRemaining()
+    } catch (err) {
+      setMfaError(err.message)
+    }
+    setBackupCodesBusy(false)
   }
 
   const load = useCallback(async () => {
@@ -633,7 +678,37 @@ export default function Settings() {
           </p>
         </div>
 
-        {mfaEnrollment ? (
+        {backupCodes ? (
+          <div className="space-y-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--tally-alert)' }}>
+              Save these backup codes now — this is the only time they'll be shown.
+            </p>
+            <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+              Each one works once, as a way back in if you ever lose access to your authenticator app. Store
+              them somewhere safe (a password manager is ideal) — not a screenshot on the same phone your
+              authenticator app is on.
+            </p>
+            <div
+              className="grid grid-cols-2 gap-2 rounded-md border p-4 font-mono text-sm select-all"
+              style={{ borderColor: 'var(--border)', background: 'var(--panel-sunken)' }}
+            >
+              {backupCodes.map((c) => <span key={c}>{c}</span>)}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={backupCodesSaved} onChange={(e) => setBackupCodesSaved(e.target.checked)} />
+              I've saved these somewhere safe
+            </label>
+            <button
+              type="button"
+              onClick={() => setBackupCodes(null)}
+              disabled={!backupCodesSaved}
+              className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
+              style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+            >
+              Done
+            </button>
+          </div>
+        ) : mfaEnrollment ? (
           <form onSubmit={handleMfaVerify} className="space-y-3">
             <p className="text-sm">Scan this with your authenticator app:</p>
             <img
@@ -686,6 +761,24 @@ export default function Settings() {
         ) : mfaFactor ? (
           <div className="space-y-3">
             <p className="text-sm" style={{ color: 'var(--tally-done)' }}>Two-factor authentication is on.</p>
+            <div>
+              <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+                {backupCodesRemaining === null
+                  ? ''
+                  : backupCodesRemaining === 0
+                    ? 'No backup codes left — generate a new set below so you have a way back in if you lose your device.'
+                    : `${backupCodesRemaining} backup code${backupCodesRemaining === 1 ? '' : 's'} remaining.`}
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateNewBackupCodes}
+                disabled={backupCodesBusy}
+                className="text-sm underline disabled:opacity-60"
+                style={{ color: 'var(--ink-muted)' }}
+              >
+                {backupCodesBusy ? 'Generating…' : 'Generate new codes'}
+              </button>
+            </div>
             {mfaConfirmingDisable ? (
               <div className="flex items-center gap-3">
                 <p className="text-sm" style={{ color: 'var(--tally-alert)' }}>Turn it off?</p>

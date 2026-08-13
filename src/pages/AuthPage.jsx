@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { recoverWithBackupCode } from '../lib/mfaBackupCodes'
 
 // Set once by a synchronous script in index.html, before Supabase's client
 // has a chance to auto-consume and clear the invite/recovery URL's hash
@@ -27,6 +28,12 @@ export default function AuthPage() {
   const [mfaCode, setMfaCode] = useState('')
   const [mfaError, setMfaError] = useState('')
   const [mfaSubmitting, setMfaSubmitting] = useState(false)
+
+  const [useBackupCode, setUseBackupCode] = useState(false)
+  const [backupCodeInput, setBackupCodeInput] = useState('')
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
+  const [recoveryNotice, setRecoveryNotice] = useState('')
 
   // Normal case: already logged in, not mid invite/reset, and (if this
   // account has MFA enrolled) already past the second-factor check.
@@ -66,6 +73,30 @@ export default function AuthPage() {
       navigate('/')
     }
 
+    const handleRecoverySubmit = async (e) => {
+      e.preventDefault()
+      setRecoveryError('')
+      if (!backupCodeInput.trim()) {
+        setRecoveryError('Enter one of your backup codes.')
+        return
+      }
+      setRecoverySubmitting(true)
+      try {
+        await recoverWithBackupCode(backupCodeInput.trim())
+        setRecoveryNotice('Backup code accepted. Two-factor authentication has been turned off for your account — you can re-enable it from Settings anytime.')
+        // A full reload here, not client-side navigation — the factor was
+        // deleted server-side via the Admin API, entirely outside this
+        // session's own lifecycle. This is the one moment in the whole
+        // feature where getting stuck would mean a real lockout, so it's
+        // worth the reload to guarantee a completely fresh session fetch
+        // rather than trust any in-memory state might already be current.
+        setTimeout(() => { window.location.href = '/' }, 2500)
+      } catch (err) {
+        setRecoveryError(err.message)
+        setRecoverySubmitting(false)
+      }
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
         <div className="w-full max-w-sm">
@@ -81,52 +112,116 @@ export default function AuthPage() {
           </div>
 
           <div className="rounded-lg border p-6 sm:p-8" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-            <h1 className="font-display font-bold text-xl mb-1">Two-factor authentication</h1>
-            <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>
-              Enter the 6-digit code from your authenticator app.
-            </p>
-
-            <form onSubmit={handleMfaVerify} className="space-y-4" noValidate>
-              <div>
-                <label htmlFor="mfaCode" className="sr-only">6-digit code</label>
-                <input
-                  id="mfaCode"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="000000"
-                  className="w-full rounded-md border px-3 py-2 text-center text-lg tracking-[0.5em] font-mono"
-                  style={{ borderColor: 'var(--border)' }}
-                  autoFocus
-                />
-              </div>
-
-              {mfaError && (
-                <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
-                  {mfaError}
+            {recoveryNotice ? (
+              <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done)' }} role="status">
+                {recoveryNotice}
+              </p>
+            ) : useBackupCode ? (
+              <>
+                <h1 className="font-display font-bold text-xl mb-1">Use a backup code</h1>
+                <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>
+                  Enter one of the backup codes you saved when you set up two-factor authentication. Using one
+                  turns 2FA off for your account so you can log in — you can set it back up from Settings once
+                  you're in.
                 </p>
-              )}
 
-              <button
-                type="submit"
-                disabled={mfaSubmitting}
-                className="w-full rounded-md py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity"
-                style={{ background: 'var(--ink)', color: 'var(--panel)' }}
-              >
-                {mfaSubmitting ? 'Verifying…' : 'Verify'}
-              </button>
-            </form>
+                <form onSubmit={handleRecoverySubmit} className="space-y-4" noValidate>
+                  <div>
+                    <label htmlFor="backupCode" className="sr-only">Backup code</label>
+                    <input
+                      id="backupCode"
+                      type="text"
+                      value={backupCodeInput}
+                      onChange={(e) => setBackupCodeInput(e.target.value)}
+                      placeholder="XXXXX-XXXXX"
+                      className="w-full rounded-md border px-3 py-2 text-center text-lg tracking-wider font-mono"
+                      style={{ borderColor: 'var(--border)' }}
+                      autoFocus
+                    />
+                  </div>
 
-            <button
-              onClick={() => signOut()}
-              className="w-full text-center text-sm mt-5"
-              style={{ color: 'var(--ink-muted)' }}
-            >
-              Not you? Sign out
-            </button>
+                  {recoveryError && (
+                    <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+                      {recoveryError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={recoverySubmitting}
+                    className="w-full rounded-md py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity"
+                    style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+                  >
+                    {recoverySubmitting ? 'Checking…' : 'Use this code'}
+                  </button>
+                </form>
+
+                <button
+                  onClick={() => { setUseBackupCode(false); setRecoveryError('') }}
+                  className="w-full text-center text-sm mt-5"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Back to authenticator code
+                </button>
+              </>
+            ) : (
+              <>
+                <h1 className="font-display font-bold text-xl mb-1">Two-factor authentication</h1>
+                <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+
+                <form onSubmit={handleMfaVerify} className="space-y-4" noValidate>
+                  <div>
+                    <label htmlFor="mfaCode" className="sr-only">6-digit code</label>
+                    <input
+                      id="mfaCode"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={mfaCode}
+                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
+                      className="w-full rounded-md border px-3 py-2 text-center text-lg tracking-[0.5em] font-mono"
+                      style={{ borderColor: 'var(--border)' }}
+                      autoFocus
+                    />
+                  </div>
+
+                  {mfaError && (
+                    <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+                      {mfaError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={mfaSubmitting}
+                    className="w-full rounded-md py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity"
+                    style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+                  >
+                    {mfaSubmitting ? 'Verifying…' : 'Verify'}
+                  </button>
+                </form>
+
+                <button
+                  onClick={() => setUseBackupCode(true)}
+                  className="w-full text-center text-sm mt-5"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Lost your device? Use a backup code
+                </button>
+
+                <button
+                  onClick={() => signOut()}
+                  className="w-full text-center text-sm mt-2"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Not you? Sign out
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
