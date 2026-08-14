@@ -15,6 +15,6 @@ async function callFn(path, { method = 'GET', body } = {}) {
   return data
 }
 
-export const generateBackupCodes = () => callFn('/api/mfa-generate-backup-codes', { method: 'POST' })
-export const getBackupCodesRemaining = () => callFn('/api/mfa-backup-codes-status')
-export const recoverWithBackupCode = (code) => callFn('/api/mfa-recover', { method: 'POST', body: { code } })
+export const generateBackupCodes = () => callFn('/api/mfa', { method: 'POST', body: { action: 'generate' } })
+export const getBackupCodesRemaining = () => callFn('/api/mfa')
+export const recoverWithBackupCode = (code) => callFn('/api/mfa', { method: 'POST', body: { action: 'recover', code } })

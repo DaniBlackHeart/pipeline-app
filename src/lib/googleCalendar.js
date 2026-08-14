@@ -40,19 +40,21 @@ async function callFn(path, { method = 'GET', body } = {}) {
 }
 
 export const getGoogleCalendarStatus = (orgId) =>
-  callFn(`/api/google-calendar-status?orgId=${encodeURIComponent(orgId)}`)
+  callFn(`/api/google-calendar?orgId=${encodeURIComponent(orgId)}`)
 
 export const exchangeGoogleCode = (orgId, code, redirectUri) =>
-  callFn('/api/google-oauth-exchange', { method: 'POST', body: { orgId, code, redirectUri } })
+  callFn('/api/google-calendar', { method: 'POST', body: { action: 'exchange', orgId, code, redirectUri } })
 
 export const disconnectGoogleCalendar = (orgId) =>
-  callFn('/api/google-calendar-disconnect', { method: 'POST', body: { orgId } })
+  callFn('/api/google-calendar', { method: 'POST', body: { action: 'disconnect', orgId } })
 
 export const syncGoogleCalendarNow = (orgId) =>
-  callFn('/api/google-calendar-sync', { method: 'POST', body: { orgId } })
+  callFn('/api/google-calendar', { method: 'POST', body: { action: 'sync', orgId } })
 
 // Fire-and-forget — a failure here never blocks the calendar_events
 // write that already succeeded. EventDialog.jsx doesn't await the
-// result for anything beyond starting the request.
-export const pushGoogleCalendarChange = (orgId, eventId, action) =>
-  callFn('/api/google-calendar-push', { method: 'POST', body: { orgId, eventId, action } }).catch(() => {})
+// result for anything beyond starting the request. `pushAction` here is
+// the calendar_events change type ('upsert'/'delete'), separate from the
+// top-level `action: 'push'` that routes to this endpoint's push handler.
+export const pushGoogleCalendarChange = (orgId, eventId, pushAction) =>
+  callFn('/api/google-calendar', { method: 'POST', body: { action: 'push', orgId, eventId, pushAction } }).catch(() => {})

@@ -16,16 +16,16 @@ async function callFn(path, { method = 'GET', body } = {}) {
 }
 
 export const getWiseReconcileStatus = (orgId) =>
-  callFn(`/api/wise-reconcile-status?orgId=${encodeURIComponent(orgId)}`)
+  callFn(`/api/wise-reconcile?orgId=${encodeURIComponent(orgId)}`)
 
 export const connectWiseReconcile = (orgId, apiToken) =>
-  callFn('/api/wise-reconcile-connect', { method: 'POST', body: { orgId, apiToken } })
+  callFn('/api/wise-reconcile', { method: 'POST', body: { action: 'connect', orgId, apiToken } })
 
 export const disconnectWiseReconcile = (orgId) =>
-  callFn('/api/wise-reconcile-disconnect', { method: 'POST', body: { orgId } })
+  callFn('/api/wise-reconcile', { method: 'POST', body: { action: 'disconnect', orgId } })
 
 export const syncWiseReconcileNow = (orgId) =>
-  callFn('/api/wise-reconcile-sync', { method: 'POST', body: { orgId } })
+  callFn('/api/wise-reconcile', { method: 'POST', body: { action: 'sync', orgId } })
 
 // Direct Supabase queries — wise_transactions has real RLS policies for
 // admins (unlike the connections table), so these don't need a

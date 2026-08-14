@@ -5,11 +5,11 @@
       "schedule": "0 22 * * *"
     },
     {
-      "path": "/api/google-calendar-sync",
+      "path": "/api/google-calendar",
       "schedule": "0 12 * * *"
     },
     {
-      "path": "/api/wise-reconcile-sync",
+      "path": "/api/wise-reconcile",
       "schedule": "0 6 * * *"
     }
   ],
