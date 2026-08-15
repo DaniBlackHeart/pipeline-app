@@ -476,10 +476,13 @@ field name or response shape needs a small adjustment.
     position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back. Same idea for the
-    other two cron jobs if you deployed them: Google Calendar sync
-    (section 6) — `curl -X POST https://your-app.vercel.app/api/google-calendar-sync -H "Authorization: Bearer YOUR_CRON_SECRET"` —
+    other two cron jobs if you deployed them — both endpoints below
+    handle several things internally (see the "Vercel Hobby plan caps..."
+    note in Project structure), but a bare `CRON_SECRET` request always
+    hits the cron/all-connections path regardless: Google Calendar sync
+    (section 6) — `curl -X POST https://your-app.vercel.app/api/google-calendar -H "Authorization: Bearer YOUR_CRON_SECRET"` —
     and Wise reconciliation (section 7) —
-    `curl -X POST https://your-app.vercel.app/api/wise-reconcile-sync -H "Authorization: Bearer YOUR_CRON_SECRET"`
+    `curl -X POST https://your-app.vercel.app/api/wise-reconcile -H "Authorization: Bearer YOUR_CRON_SECRET"`
     — both should return a JSON summary rather than an error.
 14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the Owner, so you'll see the invite form. If you deployed
@@ -743,7 +746,7 @@ field name or response shape needs a small adjustment.
   one-time bypass — the person logs in with just their password
   afterward and re-enables 2FA (getting a fresh set of codes) from
   Settings if they want it back on, separately.
-- **`api/mfa-recover.js` uses Supabase's Admin API to remove a factor —
+- **`api/mfa.js`'s recovery logic uses Supabase's Admin API to remove a factor —
   built against their documented conventions but not verified against a
   live call during development**, same caveat as the Wise integration.
   Worth actually testing (see Try It, step 22) rather than assuming it
@@ -753,6 +756,18 @@ field name or response shape needs a small adjustment.
   their authenticator *and* their saved codes, the fix is still the
   workspace owner going into the Supabase dashboard directly
   (Authentication → Users → that person → remove their MFA factor).
+- **Vercel's Hobby plan caps a deployment at 12 serverless functions
+  total** — a real limit that already caused one failed deploy once
+  Google Calendar, Wise reconciliation, and 2FA backup codes were all
+  built, each as several small files. Fixed by consolidating each
+  integration into one file per group (`api/google-calendar.js`,
+  `api/wise-reconcile.js`, `api/mfa.js`), dispatched internally by
+  method + an `action` field rather than one file per operation — down
+  to 5 functions total, with headroom. Worth keeping in mind for
+  whatever gets added next: prefer extending one of the existing
+  consolidated files (or a new one with the same internal-dispatch
+  pattern) over always reaching for a brand-new `api/*.js` file per
+  small operation.
 
 ## Where to check for errors after launch
 

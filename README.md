@@ -48,23 +48,24 @@ src/
                   Settings, Calendar, Tickets, TicketForm, TicketDetail,
                   Reports, Team, ShareView (public, unauthenticated)
 api/
-  daily-digest.js         Vercel serverless function — Cron-triggered,
-                          service-role only, never called from the frontend
-  invite-member.js        Vercel serverless function — called from the Team
-                          page, verifies the caller's own admin role itself
-                          rather than trusting the client
-  google-oauth-exchange.js, google-calendar-status.js,
-  google-calendar-disconnect.js, google-calendar-push.js,
-  google-calendar-sync.js
-                          Google Calendar two-way sync — see "How the
-                          calendar works" below
-  wise-reconcile-connect.js, wise-reconcile-status.js,
-  wise-reconcile-disconnect.js, wise-reconcile-sync.js
-                          Wise auto-reconciliation — see "How invoicing
-                          works" below
-  mfa-generate-backup-codes.js, mfa-backup-codes-status.js,
-  mfa-recover.js
-                          2FA backup-code recovery — see "How two-factor
+  Vercel Hobby plan caps a deployment at 12 serverless functions total —
+  each endpoint below that handles more than one operation is
+  consolidated into one file on purpose, dispatched internally by HTTP
+  method + an `action` field in the request body, specifically to leave
+  headroom under that cap rather than one file per operation.
+  daily-digest.js         Cron-triggered, service-role only, never called
+                          from the frontend
+  invite-member.js        Called from the Team page, verifies the
+                          caller's own admin role itself rather than
+                          trusting the client
+  google-calendar.js      Google Calendar two-way sync (status/exchange/
+                          disconnect/push/sync all in one file) — see
+                          "How the calendar works" below
+  wise-reconcile.js       Wise auto-reconciliation (status/connect/
+                          disconnect/sync all in one file) — see "How
+                          invoicing works" below
+  mfa.js                  2FA backup-code recovery (status/generate/
+                          recover all in one file) — see "How two-factor
                           authentication works" below
   _authHelpers.js, _googleAuth.js, _wiseAuth.js, _mfaBackupCodes.js
                           Shared helpers, not routes themselves (leading
@@ -639,7 +640,7 @@ not just an editable row. What's there:
   getting a fresh set of codes) is a separate, deliberate step from
   Settings once back in — using a backup code is a full reset, not a
   one-time bypass that leaves the old authenticator still configured.
-- **The backup-code recovery endpoint (`api/mfa-recover.js`) uses
+- **The backup-code recovery logic (in `api/mfa.js`) uses
   Supabase's Admin API to remove the factor — built against their
   documented conventions but not verified against a live call during
   development**, same honest caveat as the Wise integration. If the
