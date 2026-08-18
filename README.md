@@ -594,6 +594,33 @@ not just an editable row. What's there:
   change your own role or remove yourself, and won't let anyone demote or
   remove the last remaining owner of a workspace.
 
+## How password requirements work
+
+- **Same policy for both entry points, owner and member alike.** Owner
+  signup (`AuthPage.jsx`, `handleSubmit`) and the shared invite/reset
+  "set password" screen (`handleSetPassword`) both call the same
+  `evaluatePassword()` from `src/lib/passwordStrength.js` — one place
+  defines the rule, both forms enforce it identically.
+- **The bar: at least 10 characters, not a known-common password, no
+  simple repeated or sequential run** (`aaaaaaaaaa`, `1234567890`,
+  `abcdefghij`), and **not your own name or email embedded in it.** These
+  four are hard blocks — the form won't submit until all four pass.
+- **Deliberately doesn't force a mix of symbols/numbers/case.** Current
+  guidance (NIST 800-63B) favors length over composition rules — a long
+  passphrase is both stronger and easier to actually remember than a short
+  password with a forced `!` tacked on. The live strength meter still
+  rewards variety and extra length visually, just doesn't require it.
+- **The live meter (`PasswordStrengthMeter.jsx`) is feedback, not a second
+  gate** — it shows a 4-segment bar plus a running checklist as you type,
+  using the same `evaluatePassword()` call, so what you see while typing
+  and what actually blocks submission never disagree.
+- **This is a client-side guardrail, not the real security boundary.**
+  Someone could call Supabase's signup API directly and skip the React
+  form entirely. The actual enforcement point is Supabase's own
+  server-side password policy (Authentication → Providers → Email →
+  Password Requirements) — see Setup section 1, step 26. Set that to
+  match (minimum length 10) before licensing this to anyone else.
+
 ## How two-factor authentication works
 
 - **Built entirely on Supabase's own MFA support** — no new schema, no

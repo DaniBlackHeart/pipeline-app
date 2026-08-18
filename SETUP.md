@@ -102,6 +102,20 @@ through or you're not sure whether it already ran, just run it again.
 25. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
+26. **Do this one before licensing to anyone else.** The app's own signup and
+    set-password forms now enforce a real password policy (see "Password
+    strength" under Known limitations), but that check runs in the browser —
+    someone could still call Supabase's API directly with a weak password
+    and bypass it. Close that gap in the same **Authentication → Providers →
+    Email** screen, under **Password Requirements**: set **Minimum password
+    length** to `10` (matches the app's own minimum, so both stay in sync).
+    You can optionally also set the character-requirement dropdown to
+    require a mix of letters and numbers, though the app deliberately
+    doesn't force that client-side — long passwords without forced symbols
+    tend to be both stronger and less likely to get reused elsewhere.
+    "Prevent use of leaked passwords" (checks against HaveIBeenPwned) is
+    also in this screen but is a Supabase **Pro plan** feature — not
+    available on the free tier this project currently runs on.
 
 ### Cleaning up existing extra workspaces
 
@@ -768,6 +782,23 @@ field name or response shape needs a small adjustment.
   consolidated files (or a new one with the same internal-dispatch
   pattern) over always reaching for a brand-new `api/*.js` file per
   small operation.
+- **Password strength** — signup and the invite/reset "set password" form
+  both now require at least 10 characters, reject known-common passwords
+  and simple repeated/sequential runs, and block using your own name or
+  email as the password (`src/lib/passwordStrength.js`). This is
+  client-side, which means it's a UX guardrail, not the real security
+  boundary — someone could still call Supabase's signup API directly with
+  a weak password. **Setup section 1, step 26** closes that gap by setting
+  the same minimum length on Supabase's own side, which is enforced
+  server-side and can't be bypassed. Do that step before licensing this to
+  anyone else. "Leaked password" checking (against HaveIBeenPwned) exists
+  on Supabase's side too, but only on the Pro plan — not available on the
+  free tier this currently runs on.
+- **No "change your password while logged in" flow yet.** Signup sets one,
+  and "Forgot password" resets one via email — but there's no Settings
+  page field for an already-logged-in person to change their current
+  password without going through the email-reset flow. Worth adding if
+  that friction becomes annoying.
 
 ## Where to check for errors after launch
 
