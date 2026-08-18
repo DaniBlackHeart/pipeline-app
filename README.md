@@ -547,11 +547,21 @@ not just an editable row. What's there:
   owner of their own workspace — that's what a normal self-service signup
   still does. Everyone *they* invite only ever lands inside that one
   workspace, never with a stray workspace of their own. This is enforced
-  at the trigger level (`schema_single_workspace_invites.sql`), not just a
-  UI convention — an invited account's `auth.users` row is created with
-  Supabase's own `invited_at` marker set, which the workspace-creation
-  trigger checks and skips for exactly that case. A normal signup (no
+  at the trigger level, not just a UI convention. A normal signup (no
   invite involved) is unaffected and still gets a workspace automatically.
+- **The signal for "this account was invited" is a flag this app sets
+  itself, not a Supabase-internal field.** The first version of this fix
+  (`schema_single_workspace_invites.sql`) checked `auth.users.invited_at`,
+  on the documented assumption that Supabase's `inviteUserByEmail()`
+  always sets it. Confirmed against a real invite that it doesn't
+  reliably — a genuinely invited teammate still got a stray personal
+  workspace. `schema_fix_invite_workspace_signal.sql` corrects this:
+  `api/invite-member.js` now sets an explicit `pipeline_invited: true`
+  flag in the new account's own metadata at creation time, and the
+  trigger checks that (keeping the old `invited_at` check as a harmless
+  fallback). Anyone invited before this fix went live may still have a
+  stray workspace sitting around — see SETUP.md's "Cleaning up existing
+  extra workspaces."
 - **The workspace switcher only shows up when there's actually more than
   one to choose from.** With the fix above, a normal invited teammate will
   only ever belong to one workspace, so the switcher stays out of their
@@ -618,7 +628,7 @@ not just an editable row. What's there:
   Someone could call Supabase's signup API directly and skip the React
   form entirely. The actual enforcement point is Supabase's own
   server-side password policy (Authentication → Providers → Email →
-  Password Requirements) — see Setup section 1, step 26. Set that to
+  Password Requirements) — see Setup section 1, step 27. Set that to
   match (minimum length 10) before licensing this to anyone else.
 
 ## How two-factor authentication works
