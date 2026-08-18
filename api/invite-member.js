@@ -104,9 +104,18 @@ export default async function handler(req, res) {
     }
 
     // Path 2: no account yet — create one and send Supabase's invite email.
+    // Passing `data` here sets this account's user_metadata (raw_user_meta_data)
+    // at creation time — a flag we set explicitly and fully control, unlike
+    // auth.users.invited_at, which turned out not to be reliably set by
+    // inviteUserByEmail on current Supabase versions (confirmed the hard way:
+    // a real invited teammate still ended up with a stray personal workspace
+    // because the trigger's old invited_at-only check never fired true). The
+    // workspace-creation trigger checks this flag now — see
+    // schema_fix_invite_workspace_signal.sql.
     const siteUrl = process.env.SITE_URL || `https://${req.headers.host}`
     const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(normalizedEmail, {
       redirectTo: `${siteUrl}/login`,
+      data: { pipeline_invited: true },
     })
 
     if (inviteError || !inviteData?.user) {
@@ -114,9 +123,11 @@ export default async function handler(req, res) {
       return
     }
 
-    // The new-user triggers (profile + personal workspace) fire automatically
-    // on this insert into auth.users, same as a normal signup. We just also
-    // add them to *this* workspace, on top of the personal one they get by default.
+    // The profile-creation trigger fires automatically on this insert into
+    // auth.users, same as a normal signup — but the workspace-creation half
+    // of that trigger now skips itself for this account, because of the
+    // pipeline_invited flag set above. We add them to *this* workspace below;
+    // they get no separate personal one.
     const { error: memberInsertError } = await admin
       .from('org_members')
       .upsert({ org_id: orgId, user_id: inviteData.user.id, role }, { onConflict: 'org_id,user_id' })
