@@ -3,6 +3,8 @@ import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { recoverWithBackupCode } from '../lib/mfaBackupCodes'
+import { evaluatePassword } from '../lib/passwordStrength'
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter'
 
 // Set once by a synchronous script in index.html, before Supabase's client
 // has a chance to auto-consume and clear the invite/recovery URL's hash
@@ -237,8 +239,9 @@ export default function AuthPage() {
     const handleSetPassword = async (e) => {
       e.preventDefault()
       setError('')
-      if (newPassword.length < 8) {
-        setError('Password must be at least 8 characters.')
+      const { isValid, blockingIssues } = evaluatePassword(newPassword, { email: user?.email })
+      if (!isValid) {
+        setError(blockingIssues[0])
         return
       }
       if (newPassword !== confirmPassword) {
@@ -299,6 +302,7 @@ export default function AuthPage() {
                     autoComplete="new-password"
                     required
                   />
+                  <PasswordStrengthMeter password={newPassword} context={{ email: user?.email }} />
                 </div>
 
                 <div>
@@ -346,9 +350,12 @@ export default function AuthPage() {
       setError('Enter your email and password.')
       return
     }
-    if (mode === 'signup' && password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      return
+    if (mode === 'signup') {
+      const { isValid, blockingIssues } = evaluatePassword(password, { email, fullName })
+      if (!isValid) {
+        setError(blockingIssues[0])
+        return
+      }
     }
 
     setSubmitting(true)
@@ -551,6 +558,9 @@ export default function AuthPage() {
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
               />
+              {mode === 'signup' && (
+                <PasswordStrengthMeter password={password} context={{ email, fullName }} />
+              )}
             </div>
 
             {error && (
