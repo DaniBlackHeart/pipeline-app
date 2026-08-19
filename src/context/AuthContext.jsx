@@ -9,6 +9,25 @@ export function AuthProvider({ children }) {
   const [orgs, setOrgs] = useState([])
   const [activeOrgId, setActiveOrgId] = useState(null)
   const [mfaLevel, setMfaLevel] = useState(null) // { current, next } | null
+  const [profile, setProfile] = useState(null) // { id, full_name, nickname, email } | null
+
+  const loadProfile = useCallback(async (userId) => {
+    if (!userId) {
+      setProfile(null)
+      return
+    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, nickname, email')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Failed to load profile:', error.message)
+      return
+    }
+    setProfile(data)
+  }, [])
 
   const loadOrgs = useCallback(async (userId) => {
     if (!userId) {
@@ -61,6 +80,7 @@ export function AuthProvider({ children }) {
       if (!isMounted) return
       setSession(data.session)
       loadOrgs(data.session?.user?.id)
+      loadProfile(data.session?.user?.id)
       refreshMfaLevel(Boolean(data.session))
       setLoading(false)
     })
@@ -68,6 +88,7 @@ export function AuthProvider({ children }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       loadOrgs(newSession?.user?.id)
+      loadProfile(newSession?.user?.id)
       refreshMfaLevel(Boolean(newSession))
     })
 
@@ -75,7 +96,7 @@ export function AuthProvider({ children }) {
       isMounted = false
       listener?.subscription?.unsubscribe()
     }
-  }, [loadOrgs, refreshMfaLevel])
+  }, [loadOrgs, loadProfile, refreshMfaLevel])
 
   const signUp = async ({ email, password, fullName }) => {
     const { data, error } = await supabase.auth.signUp({
@@ -98,6 +119,8 @@ export function AuthProvider({ children }) {
   const value = {
     session,
     user: session?.user ?? null,
+    profile,
+    refreshProfile: () => loadProfile(session?.user?.id),
     loading,
     orgs,
     activeOrgId,
