@@ -11,9 +11,9 @@ const NAV_LINKS = [
   { to: '/tickets', label: 'Tickets' },
   { to: '/invoices', label: 'Invoices' },
   { to: '/reports', label: 'Reports' },
-  { to: '/team', label: 'Team' },
-  { to: '/settings', label: 'Settings' },
 ]
+// Team and Settings moved to the name dropdown in the top-right corner
+// (see the menu below) — no need for them here too.
 
 export default function AppShell({ children }) {
   const { user, profile, orgs, activeOrgId, setActiveOrgId, signOut } = useAuth()
