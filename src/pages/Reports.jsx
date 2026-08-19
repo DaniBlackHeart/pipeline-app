@@ -8,6 +8,7 @@ import { downloadCSV } from '../lib/csv'
 import { formatMoney } from '../lib/currency'
 import Scrubber from '../components/Scrubber'
 import TallyDot from '../components/TallyDot'
+import { getDisplayName } from '../lib/displayName'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 const PRIORITY_LABELS = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' }
@@ -83,9 +84,9 @@ export default function Reports() {
       invoiceQuery,
       supabase.from('projects').select('id, name, status, due_date').eq('org_id', activeOrgId).neq('status', 'archived'),
       supabase.from('tasks').select('id, title, status, project_id, start_date, due_date, assignee_id').eq('org_id', activeOrgId),
-      supabase.from('task_assignees').select('task_id, user_id, role_label, profiles ( full_name )').eq('org_id', activeOrgId),
+      supabase.from('task_assignees').select('task_id, user_id, role_label, profiles ( full_name, nickname )').eq('org_id', activeOrgId),
       supabase.from('task_comments').select('task_id').eq('org_id', activeOrgId),
-      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
       supabase.from('tickets').select('id, type, priority, status, project_id, created_at, resolved_at').eq('org_id', activeOrgId),
     ])
 
@@ -154,14 +155,14 @@ export default function Reports() {
     const map = {}
     for (const row of taskAssignees) {
       map[row.task_id] ??= []
-      map[row.task_id].push({ user_id: row.user_id, role_label: row.role_label, full_name: row.profiles?.full_name })
+      map[row.task_id].push({ user_id: row.user_id, role_label: row.role_label, name: getDisplayName(row.profiles, 'Member') })
     }
     return map
   }, [taskAssignees])
 
   const membersById = useMemo(() => {
     const map = {}
-    for (const m of members) map[m.id] = m.full_name
+    for (const m of members) map[m.id] = getDisplayName(m, 'Member')
     return map
   }, [members])
 
@@ -177,7 +178,7 @@ export default function Reports() {
     if (task.assignee_id) names.push(membersById[task.assignee_id] || 'Member')
     for (const a of (taskAssigneesByTaskId[task.id] || [])) {
       if (a.user_id === task.assignee_id) continue
-      names.push(a.role_label ? `${a.full_name || 'Member'} (${a.role_label})` : (a.full_name || 'Member'))
+      names.push(a.role_label ? `${a.name} (${a.role_label})` : a.name)
     }
     return names.length > 0 ? names.join(', ') : 'Unassigned'
   }, [membersById, taskAssigneesByTaskId])

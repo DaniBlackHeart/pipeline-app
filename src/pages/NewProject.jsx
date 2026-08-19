@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { QUICK_ROLES } from '../lib/roles'
 import { MAX_FILE_BYTES, humanizeBytes, sanitizeFilename } from '../lib/files'
 import { LinkIcon, UploadIcon } from '../components/icons'
+import { getDisplayName } from '../lib/displayName'
 
 let tempIdCounter = 0
 const nextTempId = () => `temp-${++tempIdCounter}`
@@ -37,7 +38,7 @@ export default function NewProject() {
     if (!activeOrgId) return
     supabase
       .from('org_members')
-      .select('user_id, profiles ( id, full_name )')
+      .select('user_id, profiles ( id, full_name, nickname )')
       .eq('org_id', activeOrgId)
       .then(({ data }) => setMembers((data || []).map((m) => m.profiles).filter(Boolean)))
   }, [activeOrgId])
@@ -255,7 +256,7 @@ export default function NewProject() {
                   style={{ borderColor: 'var(--border)' }}
                 >
                   <option value="">Choose a member…</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                  {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
                 </select>
               </li>
             ))}

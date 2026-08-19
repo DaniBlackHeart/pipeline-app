@@ -6,6 +6,7 @@ import TallyDot from '../components/TallyDot'
 import PriorityBadge from '../components/PriorityBadge'
 import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
+import { getDisplayName } from '../lib/displayName'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 
@@ -30,10 +31,10 @@ export default function TicketDetail() {
     const [{ data: ticketRow, error: ticketError }, { data: memberRows, error: memberError }, { data: commentRows, error: commentError }] =
       await Promise.all([
         supabase.from('tickets').select('*').eq('id', ticketId).single(),
-        supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+        supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
         supabase
           .from('ticket_comments')
-          .select('id, body, author_id, created_at, profiles ( full_name )')
+          .select('id, body, author_id, created_at, profiles ( full_name, nickname )')
           .eq('ticket_id', ticketId)
           .order('created_at', { ascending: true }),
       ])
@@ -155,7 +156,7 @@ export default function TicketDetail() {
               style={{ borderColor: 'var(--border)' }}
             >
               <option value="">Unassigned</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+              {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
             </select>
           </div>
           {projectName && (
@@ -213,7 +214,7 @@ export default function TicketDetail() {
           {comments.map((comment) => (
             <li key={comment.id} className="rounded-lg border p-3" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">{comment.profiles?.full_name || 'Someone'}</span>
+                <span className="text-sm font-medium">{getDisplayName(comment.profiles)}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>
                     {new Date(comment.created_at).toLocaleString()}

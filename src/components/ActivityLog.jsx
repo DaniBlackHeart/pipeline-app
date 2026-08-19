@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getDisplayName } from '../lib/displayName'
 
 const ENTITY_LABELS = { task: 'Task', ticket: 'Ticket', invoice: 'Invoice', project: 'Project' }
 
@@ -18,7 +19,7 @@ export default function ActivityLog({ projectId, entityType, entityId, title = '
     setLoading(true)
     let query = supabase
       .from('activity_log')
-      .select('id, entity_type, entity_id, entity_title, action, detail, created_at, profiles ( full_name )')
+      .select('id, entity_type, entity_id, entity_title, action, detail, created_at, profiles ( full_name, nickname )')
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -73,7 +74,7 @@ export default function ActivityLog({ projectId, entityType, entityId, title = '
             const target = linkFor(entry)
             const content = (
               <>
-                <span className="font-medium">{entry.profiles?.full_name || 'Someone'}</span>
+                <span className="font-medium">{getDisplayName(entry.profiles)}</span>
                 {' — '}
                 <span style={{ color: 'var(--ink-muted)' }}>{entry.detail}</span>
                 <span className="block text-xs font-mono mt-0.5" style={{ color: 'var(--ink-muted)' }}>

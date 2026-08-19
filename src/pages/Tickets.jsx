@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
 import PriorityBadge from '../components/PriorityBadge'
+import { getDisplayName } from '../lib/displayName'
 
 const TYPE_LABELS = { bug: 'Bug', request: 'Request', question: 'Question', other: 'Other' }
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 }
@@ -27,7 +28,7 @@ export default function Tickets() {
         .select('id, title, type, priority, status, assignee_id, created_at, submitted_by_client')
         .eq('org_id', activeOrgId)
         .order('created_at', { ascending: false }),
-      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
     ])
 
     if (ticketError || memberError) {
@@ -42,7 +43,7 @@ export default function Tickets() {
 
   useEffect(() => { load() }, [load])
 
-  const memberName = (id) => members.find((m) => m.id === id)?.full_name || 'Unassigned'
+  const memberName = (id) => getDisplayName(members.find((m) => m.id === id), 'Unassigned')
 
   const filtered = tickets
     .filter((t) => {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
+import { getDisplayName } from '../lib/displayName'
 import { QUICK_ROLES } from '../lib/roles'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
@@ -68,7 +69,7 @@ export default function MyTasks() {
     if (!activeOrgId || !isAdmin) return
     Promise.all([
       supabase.from('projects').select('id, name').eq('org_id', activeOrgId).neq('status', 'archived').order('name'),
-      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
     ]).then(([{ data: projectData }, { data: memberData }]) => {
       setProjects(projectData || [])
       setMembers((memberData || []).map((m) => m.profiles).filter(Boolean))
@@ -215,7 +216,7 @@ export default function MyTasks() {
               style={{ borderColor: 'var(--border)' }}
             >
               <option value="">Unassigned</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+              {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
             </select>
           </div>
           <div className="grid sm:grid-cols-2 gap-2">
@@ -258,7 +259,7 @@ export default function MyTasks() {
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <option value="">Choose a member…</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                    {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
                   </select>
                 </li>
               ))}

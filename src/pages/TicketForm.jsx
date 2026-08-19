@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { getDisplayName } from '../lib/displayName'
 
 export default function TicketForm() {
   const { ticketId } = useParams()
@@ -25,7 +26,7 @@ export default function TicketForm() {
     if (!activeOrgId) return
     Promise.all([
       supabase.from('projects').select('id, name').eq('org_id', activeOrgId).neq('status', 'archived').order('name'),
-      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
     ]).then(([{ data: projectData }, { data: memberData }]) => {
       setProjects(projectData || [])
       setMembers((memberData || []).map((m) => m.profiles).filter(Boolean))
@@ -187,7 +188,7 @@ export default function TicketForm() {
               style={{ borderColor: 'var(--border)' }}
             >
               <option value="">Unassigned</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+              {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
             </select>
           </div>
         </div>

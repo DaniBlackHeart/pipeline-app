@@ -7,6 +7,7 @@ import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
 import { formatMoney } from '../lib/currency'
 import { QUICK_ROLES } from '../lib/roles'
+import { getDisplayName } from '../lib/displayName'
 
 function deriveInvoiceDisplayStatus(invoice) {
   if (invoice.status === 'sent' && invoice.due_date && invoice.due_date < new Date().toISOString().slice(0, 10)) {
@@ -63,9 +64,9 @@ export default function TaskDetail() {
       taskRow.project_id
         ? supabase.from('projects').select('id, name, client_name, client_website, description, status').eq('id', taskRow.project_id).single()
         : Promise.resolve({ data: null }),
-      supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
-      supabase.from('task_assignees').select('user_id, role_label, created_at, profiles ( id, full_name )').eq('task_id', taskId).order('created_at', { ascending: true }),
-      supabase.from('task_comments').select('id, body, author_id, created_at, profiles ( full_name )').eq('task_id', taskId).order('created_at', { ascending: true }),
+      supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
+      supabase.from('task_assignees').select('user_id, role_label, created_at, profiles ( id, full_name, nickname )').eq('task_id', taskId).order('created_at', { ascending: true }),
+      supabase.from('task_comments').select('id, body, author_id, created_at, profiles ( full_name, nickname )').eq('task_id', taskId).order('created_at', { ascending: true }),
       supabase.from('task_relations').select('related_task_id, tasks!task_relations_related_task_id_fkey ( id, title, status, project_id, projects ( name ) )').eq('task_id', taskId),
     ])
 
@@ -113,7 +114,7 @@ export default function TaskDetail() {
       const withoutRole = prev.filter((a) => a.role_label !== role)
       if (!userId) return withoutRole
       const person = members.find((m) => m.id === userId)
-      return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name } }]
+      return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name, nickname: person?.nickname } }]
     })
 
     const { error: deleteError } = await supabase
@@ -379,7 +380,7 @@ export default function TaskDetail() {
                   style={{ borderColor: 'var(--border)' }}
                 >
                   <option value="">Choose a member…</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                  {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
                 </select>
               </li>
             )
@@ -483,7 +484,7 @@ export default function TaskDetail() {
             {comments.map((comment) => (
               <li key={comment.id} className="rounded-lg border p-3" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">{comment.profiles?.full_name || 'Someone'}</span>
+                  <span className="text-sm font-medium">{getDisplayName(comment.profiles)}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono" style={{ color: 'var(--ink-muted)' }}>
                       {new Date(comment.created_at).toLocaleString()}

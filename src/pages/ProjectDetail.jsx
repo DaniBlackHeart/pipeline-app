@@ -8,6 +8,7 @@ import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
 import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
 import { QUICK_ROLES } from '../lib/roles'
+import { getDisplayName } from '../lib/displayName'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
@@ -55,8 +56,8 @@ export default function ProjectDetail() {
       await Promise.all([
         supabase.from('projects').select('*').eq('id', projectId).single(),
         supabase.from('tasks').select('*').eq('project_id', projectId).order('position', { ascending: true }),
-        supabase.from('org_members').select('user_id, profiles ( id, full_name )').eq('org_id', activeOrgId),
-        supabase.from('project_assignees').select('user_id, role_label, profiles ( id, full_name )').eq('project_id', projectId).order('created_at', { ascending: true }),
+        supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
+        supabase.from('project_assignees').select('user_id, role_label, profiles ( id, full_name, nickname )').eq('project_id', projectId).order('created_at', { ascending: true }),
       ])
 
     if (projectError || taskError || memberError || assigneeError) {
@@ -165,7 +166,7 @@ export default function ProjectDetail() {
       const withoutRole = prev.filter((a) => a.role_label !== role)
       if (!userId) return withoutRole
       const person = members.find((m) => m.id === userId)
-      return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name } }]
+      return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name, nickname: person?.nickname } }]
     })
 
     const { error: deleteError } = await supabase
@@ -313,7 +314,7 @@ export default function ProjectDetail() {
                   style={{ borderColor: 'var(--border)' }}
                 >
                   <option value="">Choose a member…</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                  {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
                 </select>
               </li>
             )
@@ -357,7 +358,7 @@ export default function ProjectDetail() {
           >
             <option value="">Unassigned</option>
             {members.map((m) => (
-              <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+              <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>
             ))}
           </select>
           <button
@@ -386,7 +387,7 @@ export default function ProjectDetail() {
                     style={{ borderColor: 'var(--border)' }}
                   >
                     <option value="">Choose a member…</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>)}
+                    {members.map((m) => <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>)}
                   </select>
                 </li>
               ))}
@@ -438,7 +439,7 @@ export default function ProjectDetail() {
               >
                 <option value="">Unassigned</option>
                 {members.map((m) => (
-                  <option key={m.id} value={m.id}>{m.full_name || 'Member'}</option>
+                  <option key={m.id} value={m.id}>{getDisplayName(m, 'Member')}</option>
                 ))}
               </select>
 
