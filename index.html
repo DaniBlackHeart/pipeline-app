@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#14171A" />
+    <meta name="theme-color" content="#EEF0F0" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Pipeline — project management, invoicing, calendar, tickets and reports in one workspace." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Expanded:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <title>Pipeline</title>
     <script>
+      // Sets the theme attribute before first paint, so there's no flash of
+      // the wrong theme while React boots. Runs synchronously (plain
+      // script, not a module) specifically so it executes before any
+      // rendering — CSS variables aren't available yet at this point, so
+      // the two hex values below are deliberately duplicated from
+      // index.css's [data-theme="dark"] block, just for this one meta tag.
+      (function () {
+        try {
+          var stored = localStorage.getItem('pipeline-theme')
+          var theme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          var resolved = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
+          if (resolved === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark')
+          }
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', resolved === 'dark' ? '#14171A' : '#EEF0F0')
+        } catch (e) {
+          // localStorage can throw in some private-browsing modes — falls
+          // back to light, matching :root's default with no attribute set.
+        }
+      })()
+
       // Supabase invite/recovery emails deliver a login token in the URL
       // hash (#access_token=...&type=invite or &type=recovery). The
       // Supabase client auto-reads and clears that hash on init

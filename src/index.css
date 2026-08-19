@@ -17,10 +17,42 @@
   --tally-done: #2F8F7B;       /* complete / scheduled */
   --tally-done-soft: #CDE6DF;
 
+  --hover-overlay: rgba(0, 0, 0, 0.05);
+  color-scheme: light;
+
   --radius: 10px;
   --font-display: 'Archivo Expanded', 'Arial Narrow', sans-serif;
   --font-body: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* Dark theme. Applied via a data-theme attribute on <html>, set by
+   ThemeContext (src/context/ThemeContext.jsx) — not a bare
+   prefers-color-scheme media query, since "system" is only one of three
+   explicit choices (default/dark/system) and an explicit choice has to be
+   able to override the OS in either direction.
+   Contrast-checked against WCAG AA for actual text pairs (ink/ink-muted
+   against bg/panel, and each tally accent against its own -soft variant);
+   calibrated loosely against GitHub's dark theme for how much contrast is
+   realistic to expect between adjacent near-black surfaces and borders —
+   trying to force 3:1 there produces a washed-out, un-dark "dark mode." */
+[data-theme="dark"] {
+  --bg: #14171A;
+  --panel: #1B1F23;
+  --panel-sunken: #16191C;
+  --ink: #EDEEF0;
+  --ink-muted: #9BA1A8;
+  --border: #33383D;
+
+  --tally-progress: #E3A155;
+  --tally-progress-soft: #3D2E17;
+  --tally-alert: #E36763;
+  --tally-alert-soft: #3D2220;
+  --tally-done: #4FB39E;
+  --tally-done-soft: #1B3833;
+
+  --hover-overlay: rgba(255, 255, 255, 0.08);
+  color-scheme: dark;
 }
 
 html, body, #root {
@@ -32,10 +64,16 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .font-display { font-family: var(--font-display); }
 .font-mono { font-family: var(--font-mono); }
+
+/* Shared hover fill that adapts with the theme — replaces the handful of
+   spots that used to hardcode Tailwind's hover:bg-black/5, which would've
+   stayed black (i.e. gone the wrong direction) in dark mode. */
+.hover-surface:hover { background: var(--hover-overlay); }
 
 /* Visible keyboard focus, everywhere */
 :focus-visible {
@@ -49,6 +87,27 @@ body {
 
 @media print {
   @page { margin: 0; }
+  /* Printed output should always be light/high-contrast on white paper,
+     regardless of which theme is active on screen — force every theme
+     variable back to its light value here. Without this, printing while
+     dark mode is active would force the background to white (below) but
+     leave --ink at its dark-mode near-white value, since custom
+     properties cascade through <html> independent of media type —
+     result: invisible text on a white page. */
+  :root, [data-theme="dark"] {
+    --bg: #EEF0F0;
+    --panel: #FFFFFF;
+    --panel-sunken: #E4E7E7;
+    --ink: #14171A;
+    --ink-muted: #6B7078;
+    --border: #D7DBDB;
+    --tally-progress: #D98E2B;
+    --tally-progress-soft: #F3DBB3;
+    --tally-alert: #C13B3B;
+    --tally-alert-soft: #F0CACA;
+    --tally-done: #2F8F7B;
+    --tally-done-soft: #CDE6DF;
+  }
   body { background: #fff; }
   a { color: inherit; text-decoration: underline; }
 }
