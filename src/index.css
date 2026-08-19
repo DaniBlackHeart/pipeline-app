@@ -70,6 +70,21 @@ body {
 .font-display { font-family: var(--font-display); }
 .font-mono { font-family: var(--font-mono); }
 
+/* Every <select> in the app only sets a border color and relies on
+   Tailwind's preflight (background: transparent) for everything else --
+   fine for the closed control, which just shows the dark card behind it,
+   but the opened native options popup is a separate browser-rendered
+   overlay that doesn't inherit that transparency. color-scheme alone
+   wasn't reliably enough to theme it (a known cross-browser quirk, not
+   something specific to this app), so it fell back to a plain white
+   popup with washed-out text in dark mode. Explicit background/color on
+   select and option is the standard, reliable fix -- Chrome and Firefox
+   both respect it for the popup, not just the closed control. */
+select, option {
+  background-color: var(--panel);
+  color: var(--ink);
+}
+
 /* Shared hover fill that adapts with the theme — replaces the handful of
    spots that used to hardcode Tailwind's hover:bg-black/5, which would've
    stayed black (i.e. gone the wrong direction) in dark mode. */

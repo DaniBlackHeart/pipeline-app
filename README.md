@@ -615,6 +615,14 @@ not just an editable row. What's there:
   on adjacent near-black surfaces produces a washed-out result that isn't
   actually how any real dark UI looks (GitHub's own border-vs-canvas is
   roughly 1.5:1, not 3:1).
+- **Native `<select>` dropdowns needed an explicit fix, separate from
+  everything else.** `color-scheme: dark` alone wasn't enough to theme
+  the opened options popup (a known cross-browser quirk, not specific to
+  this app) — it fell back to a plain white popup with washed-out text.
+  `select, option { background-color: var(--panel); color: var(--ink); }`
+  in index.css fixes it directly, since Chrome and Firefox both respect
+  explicit background/color on `<option>` even when `color-scheme` alone
+  doesn't fully theme the native popup.
 
 ## How team management works
 
