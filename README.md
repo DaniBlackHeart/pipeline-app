@@ -571,6 +571,51 @@ not just an editable row. What's there:
   small self-contained menu with outside-click and Escape-to-close
   handled directly.
 
+## How theming (light/dark/system) works
+
+- **Three explicit choices, not just a media query.** "System" follows the
+  OS, but "Light" and "Dark" are real overrides in either direction — so
+  someone on a dark-OS can still pick light for this app specifically, and
+  vice versa. That's why this isn't just a `prefers-color-scheme` CSS
+  media query on its own; `ThemeContext` (`src/context/ThemeContext.jsx`)
+  tracks the explicit choice plus live OS state separately, and resolves
+  the two into what's actually applied.
+- **Applied via a `data-theme="dark"` attribute on `<html>`**, not a CSS
+  class, checked by every dark override in `index.css`. No dark
+  overrides needed in individual components — the whole app already read
+  its colors from CSS custom properties (`--bg`, `--panel`, `--ink`, the
+  `--tally-*` accents) rather than hardcoded values, so redefining those
+  variables under `[data-theme="dark"]` was enough to theme everything at
+  once.
+- **Stored in `localStorage` (`pipeline-theme`), not the profile.** This
+  is a per-browser display preference, not data that needs to sync across
+  devices or be visible to teammates — doesn't belong in the database. A
+  synchronous script in `index.html`'s `<head>` reads it and sets the
+  attribute before React even loads, so there's no flash of the wrong
+  theme on page load. If someone's in a private-browsing mode where
+  `localStorage` throws, this fails quietly to "system" rather than
+  breaking the page.
+- **The picker lives in the name dropdown (top-right corner), not
+  Settings** — deliberately, alongside Team/Settings/Log out, so it's one
+  click from anywhere rather than a trip to a settings page for something
+  people tend to toggle on a whim. Same reasoning as Google Calendar's
+  personal connect button living in the header's reach, not buried.
+- **Printing always forces light**, regardless of which theme is active
+  on screen — every theme variable gets reset to its light value inside
+  `@media print`. Necessary, not optional: without it, printing while
+  dark mode is active would force the page background to white (the
+  existing print fix from early in this project) while leaving text at
+  its dark-mode near-white color — invisible on the printed page. Caught
+  this while building the feature, not after.
+- **Colors were contrast-checked against WCAG AA for actual text pairs**
+  (ink/ink-muted against bg/panel, each tally accent against its own
+  -soft variant) — all comfortably pass. Loosely calibrated the
+  panel/border elevation differences against GitHub's own dark theme
+  rather than chasing a literal 3:1 there, since strict non-text contrast
+  on adjacent near-black surfaces produces a washed-out result that isn't
+  actually how any real dark UI looks (GitHub's own border-vs-canvas is
+  roughly 1.5:1, not 3:1).
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If

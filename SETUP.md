@@ -594,6 +594,16 @@ field name or response shape needs a small adjustment.
     workspace switcher visible at all — if a switcher shows up, they
     picked up a stray second workspace and the fix in step 24 of section 1
     didn't take; re-check that it was actually run.
+25. Click your name in the top-right corner and try all three theme
+    options. Dark should genuinely look like a dark theme, not just an
+    inverted one — check a status badge (a task's TallyDot, an overdue
+    invoice) still reads clearly, not washed out. Switch to "System,"
+    then change your OS's own light/dark setting — the app should follow
+    it live, no reload needed. Reload the page on Dark or Light (not
+    System) — it should come back exactly as you left it with no flash of
+    the wrong theme first. Last check: print a page (any page, `Ctrl/Cmd
+    + P`) while dark mode is active — the print preview should be plain
+    light/white, not dark.
 
 ## Known limitations to know about
 
@@ -843,6 +853,12 @@ field name or response shape needs a small adjustment.
   edits their own full name/nickname in their own Settings — there's no
   "edit teammate's display name" control on the Team page, even for
   owners/admins.
+- **Theme choice is per-browser, not per-account.** It's stored in
+  `localStorage`, not the profile — switching computers or clearing site
+  data resets it to "System." This was a deliberate choice, not an
+  oversight: it's a display preference, not something that needs to sync
+  across devices or be visible to teammates, so it didn't belong in the
+  database.
 
 ## Where to check for errors after launch
 
