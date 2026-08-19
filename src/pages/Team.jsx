@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { getDisplayName } from '../lib/displayName'
 
 const ROLE_LABELS = { owner: 'Owner', admin: 'Admin', member: 'Member' }
 
@@ -26,7 +27,7 @@ export default function Team() {
     setError('')
     const { data, error: fetchError } = await supabase
       .from('org_members')
-      .select('user_id, role, created_at, profiles ( id, full_name, email )')
+      .select('user_id, role, created_at, profiles ( id, full_name, nickname, email )')
       .eq('org_id', activeOrgId)
       .order('created_at', { ascending: true })
 
@@ -38,7 +39,9 @@ export default function Team() {
     setMembers((data || []).filter((m) => m.profiles).map((m) => ({
       userId: m.user_id,
       role: m.role,
-      name: m.profiles.full_name || 'Unnamed',
+      name: getDisplayName(m.profiles, 'Unnamed'),
+      fullName: m.profiles.full_name || '',
+      nickname: m.profiles.nickname || '',
       email: m.profiles.email || '—',
     })))
     setLoading(false)
@@ -206,6 +209,9 @@ export default function Team() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{member.name}{isSelf ? ' (you)' : ''}</p>
+                  {member.nickname && member.fullName && member.fullName !== member.nickname && (
+                    <p className="text-xs truncate" style={{ color: 'var(--ink-muted)' }}>{member.fullName}</p>
+                  )}
                   <p className="text-xs truncate" style={{ color: 'var(--ink-muted)' }}>{member.email}</p>
                 </div>
 

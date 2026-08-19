@@ -18,8 +18,43 @@ import {
 import { generateBackupCodes, getBackupCodesRemaining } from '../lib/mfaBackupCodes'
 
 export default function Settings() {
-  const { activeOrgId, activeOrg, user, refreshMfaLevel } = useAuth()
+  const { activeOrgId, activeOrg, user, profile, refreshProfile, refreshMfaLevel } = useAuth()
   const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
+
+  const [profileFullName, setProfileFullName] = useState('')
+  const [profileNickname, setProfileNickname] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(false)
+  const [profileError, setProfileError] = useState('')
+
+  useEffect(() => {
+    if (!profile) return
+    setProfileFullName(profile.full_name || '')
+    setProfileNickname(profile.nickname || '')
+  }, [profile])
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault()
+    setProfileError('')
+    setProfileSaved(false)
+    const trimmedName = profileFullName.trim()
+    if (!trimmedName) {
+      setProfileError('Full name can\'t be empty.')
+      return
+    }
+    setProfileSaving(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: trimmedName, nickname: profileNickname.trim() || null })
+      .eq('id', user.id)
+    setProfileSaving(false)
+    if (error) {
+      setProfileError(error.message)
+      return
+    }
+    await refreshProfile()
+    setProfileSaved(true)
+  }
 
   const [wiseLink, setWiseLink] = useState('')
   const [invoicePrefix, setInvoicePrefix] = useState('INV')
@@ -370,6 +405,65 @@ export default function Settings() {
     <div className="max-w-lg mx-auto">
       <h1 className="font-display font-bold text-2xl mb-1">Settings</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--ink-muted)' }}>Workspace: {activeOrg?.name}</p>
+
+      <form onSubmit={handleSaveProfile} className="rounded-lg border p-5 space-y-4 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <div>
+          <h2 className="font-display font-bold text-lg mb-1">Your profile</h2>
+          <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+            Just for you — this is what everyone else on the team sees for you, in Team, task assignments,
+            comments, and the menu in the top-right corner.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="profile-full-name" className="block text-sm font-medium mb-1">Full name</label>
+          <input
+            id="profile-full-name"
+            type="text"
+            value={profileFullName}
+            onChange={(e) => setProfileFullName(e.target.value)}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)' }}
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="profile-nickname" className="block text-sm font-medium mb-1">Nickname (optional)</label>
+          <p className="text-xs mb-2" style={{ color: 'var(--ink-muted)' }}>
+            Shown instead of your full name everywhere your name appears, if set.
+          </p>
+          <input
+            id="profile-nickname"
+            type="text"
+            value={profileNickname}
+            onChange={(e) => setProfileNickname(e.target.value)}
+            placeholder="e.g. how your teammates already know you"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+
+        {profileError && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert)' }} role="alert">
+            {profileError}
+          </p>
+        )}
+        {profileSaved && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done)' }} role="status">
+            Profile saved.
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={profileSaving}
+          className="rounded-md px-4 py-2 text-sm font-medium disabled:opacity-60"
+          style={{ background: 'var(--ink)', color: 'var(--panel)' }}
+        >
+          {profileSaving ? 'Saving…' : 'Save profile'}
+        </button>
+      </form>
 
       {!isAdmin && (
         <p className="text-sm rounded-md px-3 py-2 mb-4" style={{ background: 'var(--tally-progress-soft)', color: 'var(--ink)' }}>
