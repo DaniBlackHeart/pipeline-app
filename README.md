@@ -540,6 +540,37 @@ not just an editable row. What's there:
   same way task assignment and ticket comments already do (bell +
   optional daily digest).
 
+## How profiles (names + nicknames) work
+
+- **Every profile has a `full_name` and an optional `nickname`.**
+  `full_name` defaults to the person's email at signup (see
+  `handle_new_user()` in schema.sql) until they set a real one — which is
+  exactly why freshly invited teammates showed up as their raw email
+  address everywhere until this was built.
+- **One shared resolution rule, used everywhere a name is displayed:**
+  `getDisplayName()` in `src/lib/displayName.js` returns nickname if set,
+  else full name, else email. Every place in the app that shows a
+  person's name — the header menu, Team roster, assignee dropdowns, task/
+  ticket comments, the activity log — calls this same function. There's
+  no separate "casual name" vs. "formal name" convention; it's the same
+  resolved name everywhere, deliberately, to keep it simple.
+- **Editing your own name/nickname lives in Settings, at the top, above
+  the admin-gated cards.** It's personal, not a workspace setting — every
+  member can edit their own regardless of role — same pattern as the
+  email notification preferences already there. Saving calls
+  `refreshProfile()` on `AuthContext`, so the header updates immediately
+  without a page reload.
+- **The Team roster shows full name as a secondary line under the
+  resolved display name, but only when a nickname is actually set and
+  differs from it** — otherwise there'd be nothing to gain by repeating
+  the same string twice.
+- **The top-right header is now a dropdown, not a bare Log out button.**
+  Click your name → Team, Settings, Log out, plus a small "signed in as
+  {email}" line at the top for reference (since the raw email no longer
+  sits in the header bar on its own). No external dependency — it's a
+  small self-contained menu with outside-click and Escape-to-close
+  handled directly.
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If
@@ -628,7 +659,7 @@ not just an editable row. What's there:
   Someone could call Supabase's signup API directly and skip the React
   form entirely. The actual enforcement point is Supabase's own
   server-side password policy (Authentication → Providers → Email →
-  Password Requirements) — see Setup section 1, step 27. Set that to
+  Password Requirements) — see Setup section 1, step 28. Set that to
   match (minimum length 10) before licensing this to anyone else.
 
 ## How two-factor authentication works

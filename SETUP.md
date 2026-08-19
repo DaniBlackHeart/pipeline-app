@@ -96,7 +96,11 @@ through or you're not sure whether it already ran, just run it again.
     remove any stray workspace they already picked up — it's a general
     query, not tied to one specific person, so it'll safely catch anyone
     it applies to.
-25. Go to **Project Settings → API**. Copy:
+25. Then paste and run `supabase/schema_profile_nickname.sql` (adds an
+    optional `nickname` column to profiles — no RLS changes needed, the
+    existing "users can update their own profile" policy already covers
+    it since it's row-level, not column-level).
+26. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -110,10 +114,10 @@ through or you're not sure whether it already ran, just run it again.
       them, keep it aside for those sections. **Never** put it in
       `.env.example`, never prefix it `VITE_` (that would bundle it into
       client-side JS), never commit it anywhere.
-26. (Optional, recommended for real use) Under **Authentication → Providers →
+27. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
-27. **Do this one before licensing to anyone else.** The app's own signup and
+28. **Do this one before licensing to anyone else.** The app's own signup and
     set-password forms now enforce a real password policy (see "Password
     strength" under Known limitations), but that check runs in the browser —
     someone could still call Supabase's API directly with a weak password
@@ -577,6 +581,19 @@ field name or response shape needs a small adjustment.
     is the one part of this whole setup process built without being able
     to test it against a live call beforehand — genuinely worth
     confirming it works, not just skimming past).
+23. Go to **Settings** → **Your profile** and set a full name and a
+    nickname. Check the top-right corner immediately — it should update
+    to show the nickname without a page reload. Then check **Team**: your
+    row should show the nickname as the bold name, with your full name as
+    a smaller line underneath it (since they're different). Clear the
+    nickname and save again — Team should fall back to showing just the
+    full name, no second line.
+24. Invite a genuinely new email (one that's never touched this Pipeline
+    project before) and have them click through to set their password.
+    Once they're in, they should land directly in your workspace with no
+    workspace switcher visible at all — if a switcher shows up, they
+    picked up a stray second workspace and the fix in step 24 of section 1
+    didn't take; re-check that it was actually run.
 
 ## Known limitations to know about
 
@@ -802,7 +819,7 @@ field name or response shape needs a small adjustment.
   email as the password (`src/lib/passwordStrength.js`). This is
   client-side, which means it's a UX guardrail, not the real security
   boundary — someone could still call Supabase's signup API directly with
-  a weak password. **Setup section 1, step 27** closes that gap by setting
+  a weak password. **Setup section 1, step 28** closes that gap by setting
   the same minimum length on Supabase's own side, which is enforced
   server-side and can't be bypassed. Do that step before licensing this to
   anyone else. "Leaked password" checking (against HaveIBeenPwned) exists
@@ -813,6 +830,19 @@ field name or response shape needs a small adjustment.
   page field for an already-logged-in person to change their current
   password without going through the email-reset flow. Worth adding if
   that friction becomes annoying.
+- **Existing accounts don't get their name backfilled automatically.**
+  Anyone who was already a member before this feature existed still shows
+  as their raw email until they visit Settings once and fill in their own
+  name — nothing retroactively renames people. Worth mentioning to
+  existing teammates the first time they log in after this ships.
+- **No profile photos/avatars** — text only (name/nickname). A visual
+  identifier would be a reasonable follow-up if the roster grows past a
+  handful of people and email/initials stop being enough to tell people
+  apart at a glance.
+- **An admin can't set someone else's name on their behalf.** Each person
+  edits their own full name/nickname in their own Settings — there's no
+  "edit teammate's display name" control on the Team page, even for
+  owners/admins.
 
 ## Where to check for errors after launch
 
