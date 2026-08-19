@@ -88,7 +88,7 @@ export default function NotificationBell() {
     <div className="relative flex-shrink-0" ref={containerRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-md p-1.5 hover:bg-black/5 transition-colors"
+        className="relative rounded-md p-1.5 hover-surface transition-colors"
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -129,7 +129,7 @@ export default function NotificationBell() {
                 <li key={notif.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
                   <button
                     onClick={() => handleClickNotification(notif)}
-                    className="w-full text-left px-4 py-3 hover:bg-black/5 transition-colors flex gap-2"
+                    className="w-full text-left px-4 py-3 hover-surface transition-colors flex gap-2"
                   >
                     <span
                       className="h-2 w-2 rounded-full mt-1.5 flex-shrink-0"

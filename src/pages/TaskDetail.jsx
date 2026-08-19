@@ -464,7 +464,7 @@ export default function TaskDetail() {
               <li key={t.id}>
                 <button
                   onClick={() => handleAddRelation(t)}
-                  className="w-full text-left text-sm rounded-md border px-3 py-2 hover:bg-black/5 transition-colors"
+                  className="w-full text-left text-sm rounded-md border px-3 py-2 hover-surface transition-colors"
                   style={{ borderColor: 'var(--border)' }}
                 >
                   + {t.title} {t.projects?.name && <span style={{ color: 'var(--ink-muted)' }}>({t.projects.name})</span>}

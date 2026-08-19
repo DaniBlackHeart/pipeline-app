@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { getDisplayName } from '../lib/displayName'
+import { SunIcon, MoonIcon, MonitorIcon } from './icons'
 import NotificationBell from './NotificationBell'
 
 const NAV_LINKS = [
@@ -15,8 +17,15 @@ const NAV_LINKS = [
 // Team and Settings moved to the name dropdown in the top-right corner
 // (see the menu below) — no need for them here too.
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', Icon: SunIcon },
+  { value: 'dark', label: 'Dark', Icon: MoonIcon },
+  { value: 'system', label: 'System', Icon: MonitorIcon },
+]
+
 export default function AppShell({ children }) {
   const { user, profile, orgs, activeOrgId, setActiveOrgId, signOut } = useAuth()
+  const { theme, setTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -79,7 +88,7 @@ export default function AppShell({ children }) {
           <div className="relative flex-shrink-0" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="text-sm px-3 py-1.5 rounded-md border hover:bg-black/5 transition-colors flex items-center gap-1.5 max-w-[160px]"
+              className="text-sm px-3 py-1.5 rounded-md border hover-surface transition-colors flex items-center gap-1.5 max-w-[160px]"
               style={{ borderColor: 'var(--border)' }}
               aria-haspopup="true"
               aria-expanded={menuOpen}
@@ -100,10 +109,39 @@ export default function AppShell({ children }) {
                   <p className="text-sm font-medium truncate">{displayName}</p>
                   <p className="text-xs truncate" style={{ color: 'var(--ink-muted)' }}>{user?.email}</p>
                 </div>
+
+                <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--ink-muted)' }}>Appearance</p>
+                  <div className="flex gap-1" role="radiogroup" aria-label="Theme">
+                    {THEME_OPTIONS.map(({ value, label, Icon }) => {
+                      const active = theme === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setTheme(value)}
+                          role="radio"
+                          aria-checked={active}
+                          title={label}
+                          className="flex-1 flex flex-col items-center gap-1 py-1.5 rounded-md text-xs transition-colors"
+                          style={{
+                            background: active ? 'var(--panel-sunken)' : 'transparent',
+                            color: active ? 'var(--ink)' : 'var(--ink-muted)',
+                            fontWeight: active ? 500 : 400,
+                          }}
+                        >
+                          <Icon />
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 <Link
                   to="/team"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-3 py-2 text-sm hover:bg-black/5"
+                  className="block px-3 py-2 text-sm hover-surface"
                   role="menuitem"
                 >
                   Team
@@ -111,14 +149,14 @@ export default function AppShell({ children }) {
                 <Link
                   to="/settings"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-3 py-2 text-sm hover:bg-black/5"
+                  className="block px-3 py-2 text-sm hover-surface"
                   role="menuitem"
                 >
                   Settings
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-black/5"
+                  className="block w-full text-left px-3 py-2 text-sm hover-surface"
                   style={{ color: 'var(--tally-alert)' }}
                   role="menuitem"
                 >
