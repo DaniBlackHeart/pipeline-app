@@ -816,7 +816,5 @@ not just an editable row. What's there:
 
 ## What's next (optional, not built)
 
-- Auto-reconciliation of Wise payments (would require Wise's real developer API and balance-polling logic — a genuine stretch goal, not a quick add)
-- Google Calendar sync (would require OAuth app setup in Google Cloud Console)
 - Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)
 - A general "browse all tasks" page. My Tasks only shows what's assigned to *you* specifically — a standalone task assigned to someone else (or not assigned to anyone yet) has no page that lists it for everyone to find, the way a project's own task list works for project-linked tasks. Worth building if standalone tasks get used a lot.
