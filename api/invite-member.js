@@ -19,6 +19,7 @@
 // this endpoint successfully even if they discovered the URL, because the
 // admin check happens here regardless of what the client claims.
 import { createClient } from '@supabase/supabase-js'
+import { logServerError, respondServerError } from './_authHelpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -29,6 +30,7 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !serviceRoleKey) {
+    logServerError('invite-member:config', new Error('Missing SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_URL env vars'))
     res.status(500).json({ error: 'Missing SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_URL env vars' })
     return
   }
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
     .maybeSingle()
 
   if (membershipError) {
-    res.status(500).json({ error: membershipError.message })
+    respondServerError(res, 'invite-member:check-membership', membershipError, "Couldn't verify your permissions. Please try again.")
     return
   }
   if (!membership || !['owner', 'admin'].includes(membership.role)) {
@@ -95,7 +97,7 @@ export default async function handler(req, res) {
         .upsert({ org_id: orgId, user_id: existingProfile.id, role }, { onConflict: 'org_id,user_id' })
 
       if (upsertError) {
-        res.status(500).json({ error: upsertError.message })
+        respondServerError(res, 'invite-member:add-existing', upsertError, "Couldn't add that person to the workspace. Please try again.")
         return
       }
 
@@ -119,6 +121,7 @@ export default async function handler(req, res) {
     })
 
     if (inviteError || !inviteData?.user) {
+      if (inviteError) logServerError('invite-member:invite-new', inviteError)
       res.status(500).json({ error: inviteError?.message || 'Invite failed for an unknown reason' })
       return
     }
@@ -133,12 +136,12 @@ export default async function handler(req, res) {
       .upsert({ org_id: orgId, user_id: inviteData.user.id, role }, { onConflict: 'org_id,user_id' })
 
     if (memberInsertError) {
-      res.status(500).json({ error: memberInsertError.message })
+      respondServerError(res, 'invite-member:add-new', memberInsertError, 'Account created, but adding them to the workspace failed. They may need to be added manually — check Team settings.')
       return
     }
 
     res.status(200).json({ status: 'invited_new', email: normalizedEmail })
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Unexpected error' })
+    respondServerError(res, 'invite-member:unexpected', err, 'Something went wrong sending the invite. Please try again.')
   }
 }

@@ -10,6 +10,7 @@
 // authenticated by CRON_SECRET — never in frontend code, never with the
 // VITE_ prefix (which would bundle it into the client JS).
 import { createClient } from '@supabase/supabase-js'
+import { logServerError } from './_authHelpers.js'
 
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization
@@ -24,6 +25,7 @@ export default async function handler(req, res) {
   const digestFromAddress = process.env.DIGEST_FROM_EMAIL
 
   if (!supabaseUrl || !serviceRoleKey) {
+    logServerError('daily-digest:config', new Error('Missing SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_URL env vars'))
     res.status(500).json({ error: 'Missing SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_URL env vars' })
     return
   }
@@ -37,6 +39,7 @@ export default async function handler(req, res) {
 
   const { data: orgs, error: orgsError } = await supabase.from('organizations').select('id, name')
   if (orgsError) {
+    logServerError('daily-digest:list-orgs', orgsError)
     res.status(500).json({ error: orgsError.message })
     return
   }
@@ -46,6 +49,7 @@ export default async function handler(req, res) {
       await processOrg(supabase, org, today, resendApiKey, digestFromAddress, summary)
       summary.orgsProcessed += 1
     } catch (err) {
+      logServerError(`daily-digest:processOrg:${org.id}`, err)
       summary.errors.push(`${org.name}: ${err.message}`)
     }
   }

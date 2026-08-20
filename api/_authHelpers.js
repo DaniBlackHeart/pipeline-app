@@ -6,6 +6,26 @@
 // as its own route.
 import { createClient } from '@supabase/supabase-js'
 
+// Logs full error detail to Vercel's function logs so a production
+// failure leaves a trace even though it's never returned to the client
+// verbatim (see respondServerError below). `context` should be short
+// and specific -- e.g. 'google-calendar:handleExchange' -- so a log
+// line is traceable back to the code that produced it.
+export function logServerError(context, err) {
+  console.error(`[api/${context}]`, err)
+}
+
+// Logs the full error, then sends a short, safe, generic message to
+// the client instead of the raw one. Supabase/Postgres error text can
+// include column, table, or constraint names that aren't meant for an
+// end user, and an unexpected JS exception's message can be almost
+// anything -- neither belongs in an HTTP response. `fallbackMessage`
+// should still say what failed, just without the internals.
+export function respondServerError(res, context, err, fallbackMessage, status = 500) {
+  logServerError(context, err)
+  res.status(status).json({ error: fallbackMessage })
+}
+
 export function createAdminClient() {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -45,7 +65,7 @@ export async function requireOrgMember(admin, res, orgId, userId) {
     .eq('user_id', userId)
     .maybeSingle()
   if (error) {
-    res.status(500).json({ error: error.message })
+    respondServerError(res, 'authHelpers:requireOrgMember', error, "Couldn't verify your workspace membership. Please try again.")
     return false
   }
   if (!membership) {
@@ -65,7 +85,7 @@ export async function requireOrgAdmin(admin, res, orgId, userId) {
     .eq('user_id', userId)
     .maybeSingle()
   if (error) {
-    res.status(500).json({ error: error.message })
+    respondServerError(res, 'authHelpers:requireOrgAdmin', error, "Couldn't verify your workspace permissions. Please try again.")
     return false
   }
   if (!membership || !['owner', 'admin'].includes(membership.role)) {

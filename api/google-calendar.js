@@ -12,7 +12,7 @@
 //   POST { action: 'push', ... }     -> push one calendar_event change to Google
 //   POST { action: 'sync' }          -> pull the caller's own connection
 //   (any method) Authorization: Bearer CRON_SECRET -> pull every connection (daily cron)
-import { requireCaller, requireOrgMember, createAdminClient } from './_authHelpers.js'
+import { requireCaller, requireOrgMember, createAdminClient, logServerError, respondServerError } from './_authHelpers.js'
 import {
   exchangeCodeForTokens,
   revokeToken,
@@ -45,7 +45,7 @@ async function handleStatus(req, res) {
     .maybeSingle()
 
   if (error) {
-    res.status(500).json({ error: error.message })
+    respondServerError(res, 'google-calendar:status', error, "Couldn't load Google Calendar connection status. Please try again.")
     return
   }
 
@@ -62,6 +62,7 @@ async function handleStatus(req, res) {
 // it must stay server-side.
 async function handleExchange(req, res) {
   if (!process.env.VITE_GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    logServerError('google-calendar:exchange-config', new Error('Missing VITE_GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET'))
     res.status(500).json({ error: 'Google Calendar sync is not configured on this deployment yet (missing VITE_GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET).' })
     return
   }
@@ -117,13 +118,13 @@ async function handleExchange(req, res) {
       { onConflict: 'org_id,user_id' }
     )
     if (upsertError) {
-      res.status(500).json({ error: upsertError.message })
+      respondServerError(res, 'google-calendar:exchange-upsert', upsertError, 'Google Calendar connected, but saving the connection failed. Please try again.')
       return
     }
 
     res.status(200).json({ connected: true, email: googleEmail })
   } catch (err) {
-    res.status(500).json({ error: err.message || 'Google token exchange failed' })
+    respondServerError(res, 'google-calendar:exchange', err, 'Google Calendar connection failed. Please try again, or reconnect from Settings.')
   }
 }
 
@@ -155,7 +156,7 @@ async function handleDisconnect(req, res) {
 
   const { error: deleteError } = await admin.from('google_calendar_connections').delete().eq('id', connection.id)
   if (deleteError) {
-    res.status(500).json({ error: deleteError.message })
+    respondServerError(res, 'google-calendar:disconnect', deleteError, 'Failed to disconnect Google Calendar. Please try again.')
     return
   }
 
@@ -231,6 +232,7 @@ async function handlePush(req, res) {
       }
       pushed += 1
     } catch (err) {
+      logServerError(`google-calendar:push:${connection.id}`, err)
       errors.push(`${connection.google_email || connection.id}: ${err.message}`)
     }
   }
@@ -316,6 +318,7 @@ async function syncOneConnection(admin, connection) {
       .update({ sync_token: nextSyncToken, last_synced_at: new Date().toISOString() })
       .eq('id', connection.id)
   } catch (err) {
+    logServerError(`google-calendar:sync:${connection.id}`, err)
     result.error = err.message || 'Sync failed'
   }
   return result
@@ -347,7 +350,8 @@ async function handleSync(req, res) {
 
   const result = await syncOneConnection(admin, connection)
   if (result.error) {
-    res.status(500).json({ error: result.error })
+    // Full detail already logged inside syncOneConnection above.
+    res.status(500).json({ error: 'Google Calendar sync failed. Please try again.' })
     return
   }
   res.status(200).json(result)
@@ -358,6 +362,7 @@ async function handleCronSync(res) {
   const admin = createAdminClient()
   const { data: connections, error } = await admin.from('google_calendar_connections').select('*')
   if (error) {
+    logServerError('google-calendar:cron-list-connections', error)
     res.status(500).json({ error: error.message })
     return
   }

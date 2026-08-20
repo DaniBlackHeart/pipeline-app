@@ -28,7 +28,7 @@
 // Wise integration) -- if the admin user endpoint doesn't return a
 // `factors` array in exactly this shape, or the delete-factor path is
 // slightly different, this is the first place to look.
-import { requireCaller } from './_authHelpers.js'
+import { requireCaller, logServerError, respondServerError } from './_authHelpers.js'
 import { generateBackupCodes, normalizeCode, codeMatchesHash } from './_mfaBackupCodes.js'
 
 async function adminFetch(path, options = {}) {
@@ -61,7 +61,7 @@ async function handleStatus(req, res) {
     .is('used_at', null)
 
   if (error) {
-    res.status(500).json({ error: error.message })
+    respondServerError(res, 'mfa:status', error, "Couldn't check your backup code status. Please try again.")
     return
   }
 
@@ -76,7 +76,7 @@ async function handleGenerate(req, res) {
 
   const { error: deleteError } = await admin.from('mfa_backup_codes').delete().eq('user_id', userId)
   if (deleteError) {
-    res.status(500).json({ error: deleteError.message })
+    respondServerError(res, 'mfa:generate-clear-old', deleteError, "Couldn't generate new backup codes. Please try again.")
     return
   }
 
@@ -86,7 +86,7 @@ async function handleGenerate(req, res) {
     rows.map((r) => ({ user_id: userId, salt: r.salt, code_hash: r.code_hash }))
   )
   if (insertError) {
-    res.status(500).json({ error: insertError.message })
+    respondServerError(res, 'mfa:generate-insert', insertError, "Couldn't generate new backup codes. Please try again.")
     return
   }
 
@@ -112,7 +112,7 @@ async function handleRecover(req, res) {
     .is('used_at', null)
 
   if (fetchError) {
-    res.status(500).json({ error: fetchError.message })
+    respondServerError(res, 'mfa:recover-fetch-codes', fetchError, "Couldn't verify that backup code. Please try again.")
     return
   }
 
@@ -136,7 +136,8 @@ async function handleRecover(req, res) {
       await adminFetch(`/auth/v1/admin/users/${userId}/factors/${factor.id}`, { method: 'DELETE' })
     }
   } catch (err) {
-    res.status(500).json({ error: `Backup code accepted, but couldn't remove the old authenticator: ${err.message}. Contact whoever manages this Supabase project directly.` })
+    logServerError('mfa:recover-remove-factor', err)
+    res.status(500).json({ error: "Backup code accepted, but the account couldn't be fully recovered automatically. Contact whoever manages this Supabase project directly." })
     return
   }
 

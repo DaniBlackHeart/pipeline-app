@@ -10,7 +10,7 @@
 //   POST { action: 'disconnect' }      -> remove the connection
 //   POST { action: 'sync' }            -> reconcile the caller's own org
 //   (any method) Authorization: Bearer CRON_SECRET -> reconcile every org (daily cron)
-import { requireCaller, requireOrgMember, requireOrgAdmin, createAdminClient } from './_authHelpers.js'
+import { requireCaller, requireOrgMember, requireOrgAdmin, createAdminClient, logServerError, respondServerError } from './_authHelpers.js'
 import { fetchWiseProfile, fetchWiseBalances, fetchWiseStatement, findMatchingInvoice } from './_wiseAuth.js'
 
 const THIRTY_DAYS_MS = 1000 * 60 * 60 * 24 * 30
@@ -38,7 +38,7 @@ async function handleStatus(req, res) {
     .maybeSingle()
 
   if (error) {
-    res.status(500).json({ error: error.message })
+    respondServerError(res, 'wise-reconcile:status', error, "Couldn't load Wise reconciliation status. Please try again.")
     return
   }
 
@@ -73,6 +73,7 @@ async function handleConnect(req, res) {
   try {
     profile = await fetchWiseProfile(apiToken)
   } catch (err) {
+    logServerError('wise-reconcile:connect-verify-token', err)
     res.status(400).json({ error: `Couldn't verify that token with Wise: ${err.message}` })
     return
   }
@@ -86,6 +87,7 @@ async function handleConnect(req, res) {
       await fetchWiseStatement(apiToken, profile.id, balances[0].id, since)
     }
   } catch (err) {
+    logServerError('wise-reconcile:connect-probe', err)
     if (err.status === 403 || err.status === 401) {
       supported = false
       probeError = "This Wise account's country doesn't support balance-statement access via the API (Wise restricts that to accounts based in the US, Canada, Australia, New Zealand, Singapore, or Malaysia). The token is valid and saved, but auto-reconciliation won't find any transactions until that changes on Wise's end."
@@ -107,7 +109,7 @@ async function handleConnect(req, res) {
     { onConflict: 'org_id' }
   )
   if (upsertError) {
-    res.status(500).json({ error: upsertError.message })
+    respondServerError(res, 'wise-reconcile:connect-save', upsertError, 'Token verified, but saving the connection failed. Please try again.')
     return
   }
 
@@ -129,7 +131,7 @@ async function handleDisconnect(req, res) {
 
   const { error: deleteError } = await admin.from('wise_reconciliation_connections').delete().eq('org_id', orgId)
   if (deleteError) {
-    res.status(500).json({ error: deleteError.message })
+    respondServerError(res, 'wise-reconcile:disconnect', deleteError, 'Failed to disconnect Wise. Please try again.')
     return
   }
 
@@ -205,6 +207,7 @@ async function syncOneConnection(admin, connection) {
       .update({ last_synced_at: new Date().toISOString(), last_error: null })
       .eq('id', connection.id)
   } catch (err) {
+    logServerError(`wise-reconcile:sync:${connection.id}`, err)
     const nowUnsupported = err.status === 403 || err.status === 401
     result.error = err.message
     await admin
@@ -254,6 +257,7 @@ async function handleCronSync(res) {
   const admin = createAdminClient()
   const { data: connections, error } = await admin.from('wise_reconciliation_connections').select('*')
   if (error) {
+    logServerError('wise-reconcile:cron-list-connections', error)
     res.status(500).json({ error: error.message })
     return
   }
