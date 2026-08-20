@@ -348,6 +348,14 @@ public/
 - **"Generate now"** creates a real invoice + line items from the template
   and advances its next-run date — a normal in-app action, no extra
   infrastructure needed.
+- **Duplicate-generation guard:** the database locks the template row
+  during generation and rejects a second call for the same template
+  within 5 minutes of the last one. This covers the daily cron and a
+  manual "Generate now" click landing close together, or two admins
+  triggering it at nearly the same time — either way, the second call
+  gets a clear error instead of silently creating a duplicate invoice.
+  The button itself is also disabled while a request is in flight, so a
+  same-tab double-click was never possible to begin with.
 - **Full automation is optional**, not required: the same daily digest
   function (below) checks every template's next-run date and auto-generates
   anything due, so once that's deployed you don't have to remember at all.
