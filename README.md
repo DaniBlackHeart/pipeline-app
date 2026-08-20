@@ -67,8 +67,11 @@ api/
   mfa.js                  2FA backup-code recovery (status/generate/
                           recover all in one file) — see "How two-factor
                           authentication works" below
-  _authHelpers.js, _googleAuth.js, _wiseAuth.js, _mfaBackupCodes.js
-                          Shared helpers, not routes themselves (leading
+  backup-export.js        Cron-triggered, service-role only — daily data
+                          export to private Storage, see "How backups
+                          work" below
+  _authHelpers.js, _googleAuth.js, _wiseAuth.js, _mfaBackupCodes.js,
+  _rateLimit.js           Shared helpers, not routes themselves (leading
                           underscore excludes them from Vercel's route
                           discovery)
 supabase/
@@ -729,7 +732,7 @@ not just an editable row. What's there:
   Someone could call Supabase's signup API directly and skip the React
   form entirely. The actual enforcement point is Supabase's own
   server-side password policy (Authentication → Providers → Email →
-  Password Requirements) — see Setup section 1, step 30. Set that to
+  Password Requirements) — see Setup section 1, step 31. Set that to
   match (minimum length 10) before licensing this to anyone else.
 
 ## How two-factor authentication works
@@ -822,6 +825,43 @@ not just an editable row. What's there:
 - **Existing task history was preserved, not reset.** This log replaces an
   earlier task-only version; its data was carried over rather than
   starting the log from zero.
+
+## How backups work
+
+- **Every real data table, once a day, to a private Storage bucket.**
+  `api/backup-export.js` runs on a daily cron, discovers every table
+  automatically via `list_public_tables()` (a small SQL helper — no
+  hardcoded table list to keep in sync as the schema evolves), and writes
+  one JSON file per day to a `backups` bucket that has zero client-side
+  access (no RLS policies at all — same access model as
+  `google_calendar_connections`). The last 14 days are kept; anything
+  older is pruned automatically on the same run.
+- **This is an export, not a restore button.** There is no
+  `api/backup-restore.js` — writing back into a live multi-tenant database
+  safely is a meaningfully bigger, riskier piece of work than making sure
+  the data exists somewhere, which is what this actually closes. If the
+  worst genuinely happens, restoring is a manual process: download the
+  file from Supabase → Storage → `backups`, then re-insert each table's
+  rows in dependency order. A real tested restore procedure with a stated
+  RPO/RTO is tracked separately as a before-licensing item, not something
+  this quietly promises.
+- **Three tables have their live credential columns stripped before
+  export, on purpose:** `google_calendar_connections` (its OAuth
+  `refresh_token`/`access_token`), `wise_reconciliation_connections` (its
+  `api_token`), and `mfa_backup_codes` (`salt`/`code_hash`). Everything
+  else about those rows — who was connected, when, whether Wise's
+  eligibility check passed — is kept, since that's useful context for
+  whoever's doing a manual restore. Only the actual secrets are dropped.
+  The trade-off: restoring from a backup means reconnecting Google
+  Calendar/Wise and regenerating MFA backup codes afterward, a small
+  one-time inconvenience against not having live credentials sitting in
+  an export file, which is a meaningfully easier thing to over-expose
+  than the production database itself.
+- **`rate_limit_events` is skipped entirely** — purely operational,
+  zero disaster-recovery value, and it would otherwise be the
+  fastest-growing table in every export.
+- Vercel's Hobby cron cap (once daily) applies here too — same constraint
+  as the digest and both integrations' pull crons.
 
 ## What's next (optional, not built)
 

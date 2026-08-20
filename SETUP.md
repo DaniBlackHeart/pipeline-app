@@ -112,24 +112,28 @@ through or you're not sure whether it already ran, just run it again.
     inviting teammates, capped at 20 per workspace per hour, and Google
     Calendar's OAuth connect step, capped at 10 per person per 10
     minutes — see `api/_rateLimit.js`).
-28. Go to **Project Settings → API**. Copy:
+28. Then paste and run `supabase/schema_backups.sql` (adds
+    `list_public_tables()`, a small helper the daily backup export uses
+    to discover every table without a hardcoded list, plus a private
+    `backups` Storage bucket for it to write to — see section 8 below).
+29. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
       `VITE_SUPABASE_ANON_KEY`
     - **service_role key** (may be labeled **"Secret key"** in newer
-      projects, formatted like `sb_secret_...`) → this is needed for five
+      projects, formatted like `sb_secret_...`) → this is needed for six
       optional server-side features: the daily digest (section 4),
       inviting teammates (section 5), Google Calendar sync (section 6),
-      Wise auto-reconciliation (section 7), and 2FA backup-code recovery.
-      Skip all five and you can skip this key entirely. If you use any of
-      them, keep it aside for those sections. **Never** put it in
-      `.env.example`, never prefix it `VITE_` (that would bundle it into
-      client-side JS), never commit it anywhere.
-29. (Optional, recommended for real use) Under **Authentication → Providers →
+      Wise auto-reconciliation (section 7), automated backups (section 8),
+      and 2FA backup-code recovery. Skip all six and you can skip this key
+      entirely. If you use any of them, keep it aside for those sections.
+      **Never** put it in `.env.example`, never prefix it `VITE_` (that
+      would bundle it into client-side JS), never commit it anywhere.
+30. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
-30. **Do this one before licensing to anyone else.** The app's own signup and
+31. **Do this one before licensing to anyone else.** The app's own signup and
     set-password forms now enforce a real password policy (see "Password
     strength" under Known limitations), but that check runs in the browser —
     someone could still call Supabase's API directly with a weak password
@@ -446,7 +450,44 @@ field name or response shape needs a small adjustment.
    transactions and see it match against any open invoices. From then on,
    it also runs automatically once a day.
 
-## 8. Try it
+## 8. Optional: automated backups
+
+Skip this if you're fine exporting data by hand occasionally — everything
+else in the app works without it. This wires up `api/backup-export.js`,
+which runs once a day and writes a full JSON export of every real data
+table to a private Storage bucket, keeping the last 14 days and pruning
+anything older automatically. It reuses `SUPABASE_SERVICE_ROLE_KEY` and
+`CRON_SECRET` — if you already set those up for the digest (section 4),
+Google Calendar sync (section 6), or Wise reconciliation (section 7),
+there's nothing new to add here.
+
+**Read this before relying on it:** this closes the "nothing is actually
+backed up" gap, but it's an export, not a restore button — there is no
+`api/backup-restore.js`. If you ever genuinely need to restore from one of
+these files, that's a manual process: download the JSON from Supabase →
+Storage → `backups`, then re-insert each table's rows in dependency order
+(`organizations` and `profiles` first, everything else after). Three
+tables — `google_calendar_connections`, `wise_reconciliation_connections`,
+`mfa_backup_codes` — have their live credential columns stripped out of
+every export on purpose (see README, "How backups work"), so a restore
+would need Google Calendar/Wise reconnected and MFA backup codes
+regenerated afterward. That's the deliberate trade-off, not a bug.
+
+1. `vercel.json` already schedules the job for `0 3 * * *` (03:00 UTC
+   daily, ahead of the other three crons) — adjust the hour if you want
+   it to line up with a specific timezone, commit, and redeploy.
+2. Test it manually before trusting the schedule:
+   `curl -X POST https://your-app.vercel.app/api/backup-export -H "Authorization: Bearer YOUR_CRON_SECRET"`
+   A healthy response looks like
+   `{"file":"pipeline-backup-2026-08-21.json","tablesExported":27,"totalRows":143,"sizeBytes":58213,"errors":[]}`
+   — a non-empty `errors` array means some tables failed to export (check
+   Vercel's logs for the specific reason) but doesn't mean the whole run
+   failed; whatever did succeed is still in the file.
+3. Confirm the file actually landed: Supabase dashboard → **Storage** →
+   **backups** bucket. You should see today's file. Nothing else needs
+   doing — the bucket, the cron, and the rotation are all already wired up.
+
+## 9. Try it
 
 1. Visit the deployed URL (or localhost), sign up with an email + password.
 2. On signup, a personal workspace ("Your Name's Workspace") is created for
@@ -523,14 +564,18 @@ field name or response shape needs a small adjustment.
     position in the list.
 13. If you deployed the digest job in section 4, run the `curl` test from
     step 8 there and confirm you get a response back. Same idea for the
-    other two cron jobs if you deployed them — both endpoints below
+    other three cron jobs if you deployed them — all four endpoints
     handle several things internally (see the "Vercel Hobby plan caps..."
     note in Project structure), but a bare `CRON_SECRET` request always
     hits the cron/all-connections path regardless: Google Calendar sync
     (section 6) — `curl -X POST https://your-app.vercel.app/api/google-calendar -H "Authorization: Bearer YOUR_CRON_SECRET"` —
-    and Wise reconciliation (section 7) —
+    Wise reconciliation (section 7) —
     `curl -X POST https://your-app.vercel.app/api/wise-reconcile -H "Authorization: Bearer YOUR_CRON_SECRET"`
-    — both should return a JSON summary rather than an error.
+    — and the backup export (section 8) —
+    `curl -X POST https://your-app.vercel.app/api/backup-export -H "Authorization: Bearer YOUR_CRON_SECRET"`
+    — all three should return a JSON summary rather than an error; for the
+    backup one specifically, also check Supabase → Storage → `backups`
+    for today's file.
 14. Go to **Team** — as the workspace's first (and so far only) member,
     you're the Owner, so you'll see the invite form. If you deployed
     section 5, try inviting a second email (even one of your own alt
@@ -836,7 +881,8 @@ field name or response shape needs a small adjustment.
   integration into one file per group (`api/google-calendar.js`,
   `api/wise-reconcile.js`, `api/mfa.js`), dispatched internally by
   method + an `action` field rather than one file per operation — down
-  to 5 functions total, with headroom. Worth keeping in mind for
+  to 5 functions total, with headroom (now 6 with `api/backup-export.js`
+  added, still well under the cap). Worth keeping in mind for
   whatever gets added next: prefer extending one of the existing
   consolidated files (or a new one with the same internal-dispatch
   pattern) over always reaching for a brand-new `api/*.js` file per
@@ -847,7 +893,7 @@ field name or response shape needs a small adjustment.
   email as the password (`src/lib/passwordStrength.js`). This is
   client-side, which means it's a UX guardrail, not the real security
   boundary — someone could still call Supabase's signup API directly with
-  a weak password. **Setup section 1, step 30** closes that gap by setting
+  a weak password. **Setup section 1, step 31** closes that gap by setting
   the same minimum length on Supabase's own side, which is enforced
   server-side and can't be bypassed. Do that step before licensing this to
   anyone else. "Leaked password" checking (against HaveIBeenPwned) exists
