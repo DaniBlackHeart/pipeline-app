@@ -20,6 +20,7 @@
 // admin check happens here regardless of what the client claims.
 import { createClient } from '@supabase/supabase-js'
 import { logServerError, respondServerError } from './_authHelpers.js'
+import { checkRateLimit } from './_rateLimit.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -78,6 +79,17 @@ export default async function handler(req, res) {
   }
   if (!membership || !['owner', 'admin'].includes(membership.role)) {
     res.status(403).json({ error: 'Only workspace owners/admins can invite teammates' })
+    return
+  }
+
+  // Rate limit: cap invites per workspace, not per admin -- multiple
+  // admins inviting from the same org share one budget. 20 per hour is
+  // generous for a real onboarding burst, tight enough to stop a
+  // compromised session (or a mistaken bulk-paste) from spamming
+  // Supabase's invite emails or probing for existing accounts.
+  const allowed = await checkRateLimit(admin, `invite:${orgId}`, 20, 60 * 60)
+  if (!allowed) {
+    res.status(429).json({ error: 'Too many invites sent recently for this workspace. Please wait a bit before sending more.' })
     return
   }
 

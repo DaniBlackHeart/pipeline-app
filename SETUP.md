@@ -107,7 +107,12 @@ through or you're not sure whether it already ran, just run it again.
     5 minutes of the last one, so the daily cron and a manual "Generate
     now" click landing close together can't create two invoices for the
     same period).
-27. Go to **Project Settings → API**. Copy:
+27. Then paste and run `supabase/schema_rate_limits.sql` (a small shared
+    table used to rate-limit two endpoints that had no limit before:
+    inviting teammates, capped at 20 per workspace per hour, and Google
+    Calendar's OAuth connect step, capped at 10 per person per 10
+    minutes — see `api/_rateLimit.js`).
+28. Go to **Project Settings → API**. Copy:
     - **Project URL** → this is `VITE_SUPABASE_URL`
     - **anon public key** (may be labeled **"Publishable key"** in newer
       Supabase projects, formatted like `sb_publishable_...`) → this is
@@ -121,10 +126,10 @@ through or you're not sure whether it already ran, just run it again.
       them, keep it aside for those sections. **Never** put it in
       `.env.example`, never prefix it `VITE_` (that would bundle it into
       client-side JS), never commit it anywhere.
-28. (Optional, recommended for real use) Under **Authentication → Providers →
+29. (Optional, recommended for real use) Under **Authentication → Providers →
     Email**, you can turn off "Confirm email" while testing, or leave it on
     and confirm via the email Supabase sends.
-29. **Do this one before licensing to anyone else.** The app's own signup and
+30. **Do this one before licensing to anyone else.** The app's own signup and
     set-password forms now enforce a real password policy (see "Password
     strength" under Known limitations), but that check runs in the browser —
     someone could still call Supabase's API directly with a weak password
@@ -603,7 +608,10 @@ field name or response shape needs a small adjustment.
     Once they're in, they should land directly in your workspace with no
     workspace switcher visible at all — if a switcher shows up, they
     picked up a stray second workspace and the fix in step 24 of section 1
-    didn't take; re-check that it was actually run.
+    didn't take; re-check that it was actually run. A single invite like
+    this should go through with no visible change — the new rate limit
+    only blocks after 20 invites from the same workspace within an hour,
+    so normal use never touches it.
 25. Click your name in the top-right corner and try all three theme
     options. Dark should genuinely look like a dark theme, not just an
     inverted one — check a status badge (a task's TallyDot, an overdue
@@ -839,7 +847,7 @@ field name or response shape needs a small adjustment.
   email as the password (`src/lib/passwordStrength.js`). This is
   client-side, which means it's a UX guardrail, not the real security
   boundary — someone could still call Supabase's signup API directly with
-  a weak password. **Setup section 1, step 29** closes that gap by setting
+  a weak password. **Setup section 1, step 30** closes that gap by setting
   the same minimum length on Supabase's own side, which is enforced
   server-side and can't be bypassed. Do that step before licensing this to
   anyone else. "Leaked password" checking (against HaveIBeenPwned) exists

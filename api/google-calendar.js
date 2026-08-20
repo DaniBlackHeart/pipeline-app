@@ -13,6 +13,7 @@
 //   POST { action: 'sync' }          -> pull the caller's own connection
 //   (any method) Authorization: Bearer CRON_SECRET -> pull every connection (daily cron)
 import { requireCaller, requireOrgMember, createAdminClient, logServerError, respondServerError } from './_authHelpers.js'
+import { checkRateLimit } from './_rateLimit.js'
 import {
   exchangeCodeForTokens,
   revokeToken,
@@ -85,6 +86,17 @@ async function handleExchange(req, res) {
     .maybeSingle()
   if (!membership) {
     res.status(403).json({ error: 'Not a member of this workspace' })
+    return
+  }
+
+  // Rate limit: cap connect attempts per user, not per org -- this is a
+  // per-person Google account link, so the budget should follow the
+  // person. 10 per 10 minutes covers a real reconnect-after-hiccup
+  // without leaving room for a scripted loop hammering Google's token
+  // endpoint with garbage codes.
+  const allowed = await checkRateLimit(admin, `oauth-exchange:${userId}`, 10, 10 * 60)
+  if (!allowed) {
+    res.status(429).json({ error: 'Too many connection attempts. Please wait a few minutes and try again.' })
     return
   }
 

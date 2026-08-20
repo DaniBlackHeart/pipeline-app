@@ -255,6 +255,10 @@ public/
     have every connected account's access silently expire every 7 days.
     Moving to Production doesn't require Google's full verification
     process for an app this size — see `SETUP.md` for the exact steps.
+  - **Connection attempts are rate-limited per person: 10 per 10
+    minutes.** Covers a real reconnect-after-hiccup with room to spare,
+    while blocking a scripted loop from hammering Google's token
+    endpoint with repeated codes — see `api/_rateLimit.js`.
 
 ## How invoicing works
 
@@ -670,6 +674,11 @@ not just an editable row. What's there:
   workspace before doing anything. A regular member calling the endpoint
   directly (bypassing the UI) would still get rejected, because the check
   doesn't trust anything the client sends about its own permissions.
+- **Invites are rate-limited per workspace: 20 per hour.** Generous for a
+  real onboarding burst, but it stops a compromised admin session (or a
+  mistaken bulk-paste) from spamming Supabase's invite emails. Hitting the
+  limit shows a clear "wait a bit" message rather than failing silently —
+  see `api/_rateLimit.js`.
 - **Task Assigned Members is three fixed role slots, not a free-form
   list.** Graphics Designer, Project Manager, Developer (defined once in
   `src/lib/roles.js`) always show up as plain text on the left, each with
@@ -720,7 +729,7 @@ not just an editable row. What's there:
   Someone could call Supabase's signup API directly and skip the React
   form entirely. The actual enforcement point is Supabase's own
   server-side password policy (Authentication → Providers → Email →
-  Password Requirements) — see Setup section 1, step 28. Set that to
+  Password Requirements) — see Setup section 1, step 30. Set that to
   match (minimum length 10) before licensing this to anyone else.
 
 ## How two-factor authentication works
