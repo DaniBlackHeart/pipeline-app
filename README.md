@@ -108,12 +108,21 @@ supabase/
                                    + pulled transactions with invoice matching
   schema_mfa_backup_codes.sql   2FA backup/recovery codes, salted and hashed
                                  (service-role only)
+  schema_recurring_invoice_idempotency.sql  Duplicate-generation guard on
+                                              recurring invoice generation
+  schema_rate_limits.sql        Shared rate-limit table (invites, Google
+                                 OAuth connect attempts)
+  schema_backups.sql            Table-discovery helper + private Storage
+                                 bucket for the daily backup export
 cleanup_redundant_workspaces.sql
   ONE-TIME, manually-reviewed cleanup — not part of the standard schema-file
   sequence. See its own header before running.
+.github/workflows/
+  ci.yml                  Build + lint on every push/PR — see "How CI
+                           works" below
 vercel.json
-  Cron schedule for the daily digest, Google Calendar sync, and Wise
-  reconciliation functions
+  Cron schedule for the daily digest, Google Calendar sync, Wise
+  reconciliation, and backup export functions
 public/
   manifest.json, sw.js, icons/    PWA assets
 ```
@@ -862,6 +871,27 @@ not just an editable row. What's there:
   fastest-growing table in every export.
 - Vercel's Hobby cron cap (once daily) applies here too — same constraint
   as the digest and both integrations' pull crons.
+
+## How CI works
+
+- **`.github/workflows/ci.yml` runs build + lint on every push and PR to
+  `main`.** Before this, build/lint were only ever run by hand before a
+  delivery — this makes a broken build visible immediately as a red X on
+  the commit, instead of only surfacing once Vercel's own deploy fails.
+- **Node version is pinned to 24, deliberately matching Vercel's own
+  function runtime** (confirmed via a `DEP0169` deprecation warning that
+  showed up in production logs once real error logging was added), so
+  this check reflects the actual deploy environment rather than whatever
+  happens to be installed locally.
+- **This doesn't block merges by itself.** There's no branch protection
+  rule requiring this check to pass — that's a GitHub repository setting,
+  not something a workflow file can turn on, and it's deliberately tracked
+  as a before-licensing step rather than done now, since branch protection
+  matters a lot more once more than one person can push to `main`.
+- **No secrets, no Supabase connection, no new setup step.** It only
+  builds and lints the code as committed — it doesn't run the app, doesn't
+  touch the database, and needs nothing added to Vercel or Supabase. Push,
+  and it runs.
 
 ## What's next (optional, not built)
 

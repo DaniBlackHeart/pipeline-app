@@ -1,0 +1,46 @@
+name: CI
+
+# Minimal build+lint check on every push and PR -- closes a real gap from
+# the 13-layer architecture audit: build and lint were only ever run
+# manually before each delivery, with nothing actually enforcing it on
+# push. This doesn't block merges by itself (that's a separate, deliberately
+# deferred "before licensing" step -- branch protection + required checks,
+# configured in GitHub's repo settings, not in this file) -- it just makes
+# a broken build visible immediately, as a red X on the commit, instead of
+# only surfacing once Vercel's own deploy fails.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Matches Vercel's own function runtime (confirmed via
+          # DEP0169 deprecation warnings appearing in production logs) --
+          # deliberately kept in sync so this check reflects the actual
+          # deploy environment rather than whatever happens to be locally
+          # installed.
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint frontend (src)
+        run: npx oxlint src
+
+      - name: Lint serverless functions (api)
+        run: npx oxlint api

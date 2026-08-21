@@ -177,9 +177,10 @@ picks up anyone missed by the first fix too.
    used, even a little, is left alone.
 
 **Free tier note:** the project pauses after 7 days with no activity — a
-dashboard visit un-pauses it, data isn't deleted. There's no automated
-backup on the free tier; export your data periodically (Table Editor → each
-table → Export) if this ever holds real client data you can't afford to lose.
+dashboard visit un-pauses it, data isn't deleted. Supabase's free tier still
+has no point-in-time recovery, but this no longer means "no backup at all" —
+section 8 below sets up a daily automated export instead of relying on
+remembering to click through Table Editor.
 
 ## 2. Local development
 
@@ -192,6 +193,10 @@ npm run dev
 ```
 
 Visit the local URL Vite prints (usually `http://localhost:5173`).
+
+Every push and PR to `main` also runs a build+lint check automatically via
+GitHub Actions (`.github/workflows/ci.yml`) — nothing to configure, it just
+runs. See README, "How CI works" for what it does and doesn't cover.
 
 ## 3. Deploy (Vercel, free tier)
 
