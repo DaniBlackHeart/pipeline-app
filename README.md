@@ -908,12 +908,42 @@ not just an editable row. What's there:
   strict-origin-when-cross-origin`, and a `Permissions-Policy` that
   explicitly disables camera/microphone/geolocation (confirmed unused
   anywhere in the codebase before locking them off).
-- **Content-Security-Policy is deliberately not included yet.** Pipeline
-  talks to Supabase, Google's OAuth/Calendar endpoints, and Wise — a CSP
-  restrictive enough to matter but wrong in even one directive could
-  silently break calendar sync or login without failing a build or a
-  lint pass. That needs its own pass with real testing against every
-  integration, not a rushed addition alongside the other four.
+- **Content-Security-Policy shipped as a follow-up, after actually
+  tracing every external dependency in the codebase** rather than
+  guessing at directives:
+  - `script-src 'self'` — no `'unsafe-inline'` needed. The theme
+    flash-prevention script that used to live inline in `index.html` was
+    moved to `public/theme-init.js` (a real file, loaded via `<script
+    src>`) specifically so this could stay strict.
+  - `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com` —
+    `'unsafe-inline'` is a deliberate, scoped exception for the inline
+    `style={{}}` attributes used throughout the component library
+    (Scrubber, TallyDot, per-page theming). Rewriting all of that to
+    avoid inline styles was out of scope for a header change; style
+    injection alone is a much smaller attack surface than script
+    injection, which stays fully locked down.
+  - `font-src 'self' https://fonts.gstatic.com` and the
+    `fonts.googleapis.com` entry above cover the Google Fonts
+    stylesheet link — nothing else loads external fonts.
+  - `img-src 'self' data:` — the only non-local image is the MFA QR
+    code, which Supabase's own enroll API returns as a `data:` URI.
+  - `connect-src 'self' https://*.supabase.co wss://*.supabase.co` —
+    covers Supabase's REST API, Storage, and the Realtime websocket
+    (activity log, notification bell). Wildcarded to `*.supabase.co`
+    rather than the specific project ref so this doesn't need editing
+    if the project ever moves (e.g. a future staging environment).
+  - **Google's OAuth screen and the Wise payment link both needed
+    nothing added.** Both are plain top-level navigations
+    (`window.location.href` / `<a href target="_blank">`), which CSP's
+    `connect-src`/`frame-src` don't govern — only real Supabase traffic
+    goes through `fetch`/WebSocket from the browser.
+  - `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+    `frame-ancestors 'self'` — zero-risk defaults with nothing in the
+    app that needs them relaxed.
+  - **Verify after deploying**: log in, connect/sync Google Calendar,
+    upload a file attachment, and watch the activity log update live —
+    a CSP violation shows up as a browser console error immediately, it
+    won't fail the build.
 - **No schema change, no new setup step, no Vercel dashboard change.**
   This is pure `vercel.json` config — it takes effect on the next deploy
   with nothing else to configure.
