@@ -30,6 +30,7 @@
 // slightly different, this is the first place to look.
 import { requireCaller, logServerError, respondServerError } from './_authHelpers.js'
 import { generateBackupCodes, normalizeCode, codeMatchesHash } from './_mfaBackupCodes.js'
+import { checkRateLimit } from './_rateLimit.js'
 
 async function adminFetch(path, options = {}) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
@@ -104,6 +105,18 @@ async function handleRecover(req, res) {
   const caller = await requireCaller(req, res)
   if (!caller) return
   const { admin, userId } = caller
+
+  // Rate limit: scoped per user, since the caller is already identified at
+  // this point (just not at aal2). Brute-forcing a code itself is
+  // computationally infeasible (10 chars from a 31-char alphabet), so this
+  // isn't guarding against that -- it's cheap defense-in-depth against a
+  // compromised session hammering the endpoint, matching the same guard
+  // already on invite-member and the Google OAuth exchange.
+  const allowed = await checkRateLimit(admin, `mfa-recover:${userId}`, 5, 15 * 60)
+  if (!allowed) {
+    res.status(429).json({ error: 'Too many recovery attempts. Please wait a bit before trying again.' })
+    return
+  }
 
   const { data: candidates, error: fetchError } = await admin
     .from('mfa_backup_codes')

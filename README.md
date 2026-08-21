@@ -797,6 +797,12 @@ not just an editable row. What's there:
   admin user endpoint's response shape or the delete-factor path differs
   even slightly from what's documented, that file is the first place to
   check.
+- **Recovery attempts are rate-limited per user: 5 per 15 minutes.**
+  Brute-forcing an actual code is computationally infeasible on its own
+  (10 characters from a 31-character alphabet), so this isn't really
+  guarding against that — it's the same cheap defense-in-depth already
+  applied to invites and the Google OAuth exchange, closing the one
+  write-capable endpoint that didn't have it yet. See `api/_rateLimit.js`.
 - **Still no "admin resets a teammate's 2FA" button in Team** — backup
   codes cover the normal "lost my phone" case, but if someone loses both
   their authenticator *and* their saved codes, the practical fix is still
