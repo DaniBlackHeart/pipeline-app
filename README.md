@@ -899,6 +899,29 @@ not just an editable row. What's there:
   touch the database, and needs nothing added to Vercel or Supabase. Push,
   and it runs.
 
+## How security headers work
+
+- **`vercel.json` now sends four security headers on every response:**
+  `X-Frame-Options: SAMEORIGIN` (blocks the app being framed by another
+  site — defends against clickjacking), `X-Content-Type-Options: nosniff`
+  (stops the browser from guessing content types), `Referrer-Policy:
+  strict-origin-when-cross-origin`, and a `Permissions-Policy` that
+  explicitly disables camera/microphone/geolocation (confirmed unused
+  anywhere in the codebase before locking them off).
+- **Content-Security-Policy is deliberately not included yet.** Pipeline
+  talks to Supabase, Google's OAuth/Calendar endpoints, and Wise — a CSP
+  restrictive enough to matter but wrong in even one directive could
+  silently break calendar sync or login without failing a build or a
+  lint pass. That needs its own pass with real testing against every
+  integration, not a rushed addition alongside the other four.
+- **No schema change, no new setup step, no Vercel dashboard change.**
+  This is pure `vercel.json` config — it takes effect on the next deploy
+  with nothing else to configure.
+- **Verify after deploying** with a fresh scan at
+  `https://securityheaders.com/?q=https://pipeline-app-blond.vercel.app/`
+  — the four should now show green; CSP will still show missing until
+  that follow-up pass.
+
 ## What's next (optional, not built)
 
 - Browser push notifications when the app is closed entirely (the bell only shows what's already installed and open — a native push notification, even with the app closed, would need VAPID keys and push subscription storage, a bigger addition than fit this pass)
