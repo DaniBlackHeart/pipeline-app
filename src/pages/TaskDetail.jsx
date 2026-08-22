@@ -109,19 +109,26 @@ export default function TaskDetail() {
     const prevAssignees = assignees
     setSavingRole(role)
     setError('')
-    // Optimistic local update first
+    // Optimistic local update first -- also drop this user from any
+    // *other* role slot they might currently hold, mirroring what the
+    // DB-level clear below does, so the UI doesn't briefly show them
+    // in two slots at once.
     setAssignees((prev) => {
-      const withoutRole = prev.filter((a) => a.role_label !== role)
+      const withoutRole = prev.filter((a) => a.role_label !== role && (!userId || a.user_id !== userId))
       if (!userId) return withoutRole
       const person = members.find((m) => m.id === userId)
       return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name, nickname: person?.nickname } }]
     })
 
-    const { error: deleteError } = await supabase
-      .from('task_assignees')
-      .delete()
-      .eq('task_id', taskId)
-      .eq('role_label', role)
+    // Clear both: whoever previously held this role slot, and any other
+    // role slot the newly selected person might already occupy on this
+    // task -- task_assignees' primary key is (task_id, user_id), so
+    // leaving a prior row in place for this user would otherwise collide
+    // with the insert below.
+    const deleteQuery = supabase.from('task_assignees').delete().eq('task_id', taskId)
+    const { error: deleteError } = await (userId
+      ? deleteQuery.or(`role_label.eq.${role},user_id.eq.${userId}`)
+      : deleteQuery.eq('role_label', role))
     if (deleteError) {
       setError(deleteError.message)
       setAssignees(prevAssignees)

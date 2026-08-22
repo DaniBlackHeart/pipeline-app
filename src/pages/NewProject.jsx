@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { QUICK_ROLES } from '../lib/roles'
+import { QUICK_ROLES, reassignRole } from '../lib/roles'
 import { MAX_FILE_BYTES, humanizeBytes, sanitizeFilename } from '../lib/files'
 import { LinkIcon, UploadIcon } from '../components/icons'
 import { getDisplayName } from '../lib/displayName'
@@ -44,7 +44,7 @@ export default function NewProject() {
   }, [activeOrgId])
 
   const handleRoleChange = (role, userId) => {
-    setAssigneeByRole((prev) => ({ ...prev, [role]: userId }))
+    setAssigneeByRole((prev) => reassignRole(prev, role, userId))
   }
 
   const handleAddPendingLink = (e) => {

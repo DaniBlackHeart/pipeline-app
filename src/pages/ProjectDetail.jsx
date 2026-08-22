@@ -7,7 +7,7 @@ import TallyDot from '../components/TallyDot'
 import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
 import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
-import { QUICK_ROLES } from '../lib/roles'
+import { QUICK_ROLES, reassignRole } from '../lib/roles'
 import { getDisplayName } from '../lib/displayName'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
@@ -77,7 +77,7 @@ export default function ProjectDetail() {
   useEffect(() => { load() }, [load])
 
   const handleTaskRoleChange = (role, userId) => {
-    setNewTaskMemberByRole((prev) => ({ ...prev, [role]: userId }))
+    setNewTaskMemberByRole((prev) => reassignRole(prev, role, userId))
   }
 
   const handleAddTask = async (e) => {
@@ -161,19 +161,26 @@ export default function ProjectDetail() {
     const prevAssignees = assignees
     setSavingRole(role)
     setError('')
-    // Optimistic local update first
+    // Optimistic local update first -- also drop this user from any
+    // *other* role slot they might currently hold, mirroring what the
+    // DB-level clear below does, so the UI doesn't briefly show them
+    // in two slots at once.
     setAssignees((prev) => {
-      const withoutRole = prev.filter((a) => a.role_label !== role)
+      const withoutRole = prev.filter((a) => a.role_label !== role && (!userId || a.user_id !== userId))
       if (!userId) return withoutRole
       const person = members.find((m) => m.id === userId)
       return [...withoutRole, { user_id: userId, role_label: role, profiles: { id: userId, full_name: person?.full_name, nickname: person?.nickname } }]
     })
 
-    const { error: deleteError } = await supabase
-      .from('project_assignees')
-      .delete()
-      .eq('project_id', projectId)
-      .eq('role_label', role)
+    // Clear both: whoever previously held this role slot, and any other
+    // role slot the newly selected person might already occupy on this
+    // project -- project_assignees' primary key is (project_id, user_id),
+    // so leaving a prior row in place for this user would otherwise
+    // collide with the insert below.
+    const deleteQuery = supabase.from('project_assignees').delete().eq('project_id', projectId)
+    const { error: deleteError } = await (userId
+      ? deleteQuery.or(`role_label.eq.${role},user_id.eq.${userId}`)
+      : deleteQuery.eq('role_label', role))
     if (deleteError) {
       setError(deleteError.message)
       setAssignees(prevAssignees)

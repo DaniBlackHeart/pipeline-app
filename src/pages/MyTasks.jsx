@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
 import { getDisplayName } from '../lib/displayName'
-import { QUICK_ROLES } from '../lib/roles'
+import { QUICK_ROLES, reassignRole } from '../lib/roles'
 
 const STATUS_CYCLE = ['todo', 'in_progress', 'done']
 
@@ -84,7 +84,7 @@ export default function MyTasks() {
   }
 
   const handleMemberRoleChange = (role, userId) => {
-    setNewMemberByRole((prev) => ({ ...prev, [role]: userId }))
+    setNewMemberByRole((prev) => reassignRole(prev, role, userId))
   }
 
   const handleCreateTask = async (e) => {

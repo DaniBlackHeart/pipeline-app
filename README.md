@@ -142,6 +142,16 @@ public/
   role replaces whoever was there, same behavior as the task version.
   Adding someone notifies them, same as everywhere else people get added
   to something in this app.
+  - **One person can only hold one of the three slots on a given project
+    or task at a time** (`project_assignees`/`task_assignees` key on
+    `(project_id/task_id, user_id)`, not including role). Picking someone
+    for a role they already hold elsewhere on the same project/task
+    *moves* them rather than erroring — all five places this logic lives
+    (both detail pages, both creation forms, and My Tasks' quick-add)
+    share one `reassignRole()` helper in `src/lib/roles.js` so this stays
+    consistent. Previously this threw a raw `duplicate key value
+    violates unique constraint "project_assignees_pkey"` error straight
+    to the user instead of handling it.
 - **Attachments too, on both the creation page and afterward** — links or
   file uploads, same as tasks and tickets already had. See "How
   attachments work" below for how the creation-page version handles not
