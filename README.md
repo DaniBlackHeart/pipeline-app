@@ -404,6 +404,14 @@ public/
   public access, same RLS as everywhere else in the app.
 - If a link ever leaks somewhere you didn't intend, **regenerate it** from
   the project page — the old link stops working immediately.
+- **The view itself is now rate-limited too** (60 views per 10 minutes per
+  token) — previously this was the one public-facing endpoint without any
+  cap at all, since it's a direct RPC call from the browser with no
+  `api/*.js` function in front of it the way invite/OAuth/MFA have.
+  Deliberately generous since it's read-only and already narrow in what
+  it returns; the goal is blunting a scraping script, not limiting normal
+  use. Uses the same `rate_limit_events` table the other rate limits
+  share — see `schema_share_view_rate_limit.sql`.
 - **Clients can also file a ticket directly from that same page** — a
   small form (their name/email optional, a type, a short summary, details)
   that creates a real internal ticket, tagged **"Client"** so your team can
