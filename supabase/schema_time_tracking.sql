@@ -75,12 +75,24 @@ create policy "org members can view time entries"
   using (public.is_org_member(org_id));
 
 -- You can only ever log time under your own account -- no logging time
--- on someone else's behalf, admin or not.
+-- on someone else's behalf, admin or not. Also requires the task to
+-- actually belong to the org you're claiming (org_id alone wasn't
+-- enough -- without this, any org member could log a fabricated entry
+-- against a task_id from a completely different org, and it would
+-- later get pulled into THIS org's own invoices as real unbilled time).
 drop policy if exists "members can log their own time" on public.time_entries;
 create policy "members can log their own time"
   on public.time_entries for insert
   to authenticated
-  with check (public.is_org_member(org_id) and user_id = auth.uid());
+  with check (
+    public.is_org_member(org_id)
+    and user_id = auth.uid()
+    and exists (
+      select 1 from public.tasks
+      where tasks.id = time_entries.task_id
+        and tasks.org_id = time_entries.org_id
+    )
+  );
 
 -- Editing/deleting your own entry covers correcting a mistake or
 -- deleting a bad one; org admins additionally need update access so
