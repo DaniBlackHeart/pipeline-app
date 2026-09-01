@@ -1025,6 +1025,42 @@ for "all of it."
   match found — navigates straight to that record's detail page and
   closes the search panel.
 
+## How bulk task actions work
+
+- **Select multiple tasks and apply one change to all of them, instead of
+  editing rows one at a time.** Available on both the Project task list
+  (`src/pages/ProjectDetail.jsx`) and My Tasks (`src/pages/MyTasks.jsx`),
+  via a shared `src/components/BulkTaskActionBar.jsx` component. A
+  checkbox on each row plus a "Select all" checkbox (scoped to whatever's
+  currently visible — the active filter tab on My Tasks) build up the
+  selection; the action bar appears above the list once at least one task
+  is checked.
+- **Each action is one Supabase call for the whole batch**
+  (`.update(...).in('id', ids)` / `.delete().in('id', ids)`), not one
+  request per selected task. This works cleanly under the existing RLS
+  policies without any change to them — `tasks` UPDATE/DELETE policies
+  are already row-level (`is_org_member(org_id)`, evaluated per row), the
+  same check a single-row edit already goes through.
+- **Selection persists across actions, but clears after delete.** You can
+  select a batch, set status, then set an assignee, then set a due date,
+  all against the same selection — it only resets when you hit Clear or
+  delete the selected tasks (since those rows are gone).
+- **The two pages expose different actions, matching what each page
+  already allowed per-row before this feature existed** — the point was
+  to batch existing capability, not quietly grant new permissions:
+  - **Project task list**: status, due date, assignee, and delete — all
+    four already existed as per-row actions here, open to any workspace
+    member (not admin-gated), same as before.
+  - **My Tasks**: status and due date only. This page never had per-row
+    assignee editing or a delete button, so bulk versions of those aren't
+    added here either — extending what a page already does, not adding
+    net-new editing surface to it in passing.
+- **Bulk delete carries the same permission level as single-task delete
+  already did** — any workspace member, not admin-only. That mirrors
+  existing behavior rather than introducing a new restriction, though
+  it's worth revisiting if task deletion should be admin-gated generally
+  (tracked as an open question, not decided here).
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If

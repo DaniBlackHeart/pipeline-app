@@ -8,6 +8,7 @@ import TaskAttachmentsDialog from '../components/TaskAttachmentsDialog'
 import AttachmentsList from '../components/AttachmentsList'
 import ActivityLog from '../components/ActivityLog'
 import AssignedMembers from '../components/AssignedMembers'
+import BulkTaskActionBar from '../components/BulkTaskActionBar'
 import TemplatePicker from '../components/TemplatePicker'
 import { QUICK_ROLES, reassignRole } from '../lib/roles'
 import { getDisplayName } from '../lib/displayName'
@@ -51,6 +52,9 @@ export default function ProjectDetail() {
   const [templateSelection, setTemplateSelection] = useState({ templateId: '', roleAssignments: {} })
   const [applyingTemplate, setApplyingTemplate] = useState(false)
   const [applyTemplateError, setApplyTemplateError] = useState('')
+
+  const [selectedTaskIds, setSelectedTaskIds] = useState(() => new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const [rateInput, setRateInput] = useState('')
   const [rateSaving, setRateSaving] = useState(false)
@@ -208,6 +212,67 @@ export default function ProjectDetail() {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
     const { error: deleteError } = await supabase.from('tasks').delete().eq('id', taskId)
     if (deleteError) setError(friendlyError(deleteError))
+  }
+
+  const toggleTaskSelected = (taskId) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }
+
+  const allTasksSelected = tasks.length > 0 && tasks.every((t) => selectedTaskIds.has(t.id))
+
+  const toggleSelectAllTasks = () => {
+    setSelectedTaskIds(allTasksSelected ? new Set() : new Set(tasks.map((t) => t.id)))
+  }
+
+  // Bulk actions apply to every selected row in one Supabase call
+  // (`.in('id', ids)`) rather than one request per task -- RLS on
+  // `tasks` is row-level (`is_org_member(org_id)`), so this works the
+  // same way the single-row update above does, just batched. Selection
+  // is left intact after a status/assignee/due-date change (so several
+  // actions can be applied to the same batch in a row); it's cleared
+  // after delete since the rows are gone.
+  const bulkSetStatus = async (status) => {
+    const ids = [...selectedTaskIds]
+    setBulkBusy(true)
+    setTasks((prev) => prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, status } : t)))
+    const { error: updateError } = await supabase.from('tasks').update({ status }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
+    setBulkBusy(false)
+  }
+
+  const bulkSetDueDate = async (dueDate) => {
+    const ids = [...selectedTaskIds]
+    setBulkBusy(true)
+    setTasks((prev) => prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, due_date: dueDate } : t)))
+    const { error: updateError } = await supabase.from('tasks').update({ due_date: dueDate }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
+    setBulkBusy(false)
+  }
+
+  const bulkSetAssignee = async (assigneeId) => {
+    const ids = [...selectedTaskIds]
+    setBulkBusy(true)
+    setTasks((prev) => prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, assignee_id: assigneeId } : t)))
+    const { error: updateError } = await supabase.from('tasks').update({ assignee_id: assigneeId }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
+    setBulkBusy(false)
+  }
+
+  const bulkDeleteTasks = async () => {
+    const ids = [...selectedTaskIds]
+    if (ids.length === 0) return
+    if (!window.confirm(`Delete ${ids.length} task${ids.length === 1 ? '' : 's'}? This can't be undone.`)) return
+    setBulkBusy(true)
+    setTasks((prev) => prev.filter((t) => !selectedTaskIds.has(t.id)))
+    const { error: deleteError } = await supabase.from('tasks').delete().in('id', ids)
+    if (deleteError) setError(friendlyError(deleteError))
+    setSelectedTaskIds(new Set())
+    setBulkBusy(false)
   }
 
   const updateProjectStatus = async (status) => {
@@ -592,13 +657,43 @@ export default function ProjectDetail() {
           <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No tasks yet — add the first one above.</p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <>
+          <BulkTaskActionBar
+            count={selectedTaskIds.size}
+            busy={bulkBusy}
+            onClear={() => setSelectedTaskIds(new Set())}
+            onStatus={bulkSetStatus}
+            onDueDate={bulkSetDueDate}
+            onAssignee={bulkSetAssignee}
+            members={members}
+            onDelete={bulkDeleteTasks}
+          />
+
+          <div className="flex items-center gap-2 px-1 mb-1">
+            <input
+              type="checkbox"
+              checked={allTasksSelected}
+              onChange={toggleSelectAllTasks}
+              aria-label="Select all tasks"
+            />
+            <span className="text-xs" style={{ color: 'var(--ink-muted)' }}>Select all</span>
+          </div>
+
+          <ul className="space-y-2">
           {tasks.map((task) => (
             <li
               key={task.id}
               className="flex items-center gap-3 rounded-lg border px-4 py-3"
               style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
             >
+              <input
+                type="checkbox"
+                checked={selectedTaskIds.has(task.id)}
+                onChange={() => toggleTaskSelected(task.id)}
+                className="flex-shrink-0"
+                aria-label={`Select ${task.title}`}
+              />
+
               <button
                 onClick={() => cycleStatus(task)}
                 className="flex-shrink-0"
@@ -657,7 +752,8 @@ export default function ProjectDetail() {
               </button>
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       )}
 
       {attachmentsTask && (

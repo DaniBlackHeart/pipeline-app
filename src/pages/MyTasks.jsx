@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TallyDot from '../components/TallyDot'
+import BulkTaskActionBar from '../components/BulkTaskActionBar'
 import { getDisplayName } from '../lib/displayName'
 import { QUICK_ROLES, reassignRole } from '../lib/roles'
 import { friendlyError } from '../lib/errorMessages'
@@ -28,6 +29,9 @@ export default function MyTasks() {
   const [newStartDate, setNewStartDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [newMemberByRole, setNewMemberByRole] = useState({})
   const [creating, setCreating] = useState(false)
+
+  const [selectedTaskIds, setSelectedTaskIds] = useState(() => new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = useCallback(async () => {
     if (!activeOrgId || !user) return
@@ -82,6 +86,39 @@ export default function MyTasks() {
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)))
     const { error: updateError } = await supabase.from('tasks').update({ status: nextStatus }).eq('id', task.id)
     if (updateError) setError(friendlyError(updateError))
+  }
+
+  const toggleTaskSelected = (taskId) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }
+
+  // Same batched-update approach as ProjectDetail's bulk actions -- one
+  // `.in('id', ids)` call per action instead of one per task. Limited to
+  // status and due date here (no assignee/delete controls), since this
+  // page never had per-row assignee editing or a delete button to begin
+  // with -- matching what's already possible per-row keeps this an
+  // extension of existing capability rather than a new one.
+  const bulkSetStatus = async (status) => {
+    const ids = [...selectedTaskIds]
+    setBulkBusy(true)
+    setTasks((prev) => prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, status } : t)))
+    const { error: updateError } = await supabase.from('tasks').update({ status }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
+    setBulkBusy(false)
+  }
+
+  const bulkSetDueDate = async (dueDate) => {
+    const ids = [...selectedTaskIds]
+    setBulkBusy(true)
+    setTasks((prev) => prev.map((t) => (selectedTaskIds.has(t.id) ? { ...t, due_date: dueDate } : t)))
+    const { error: updateError } = await supabase.from('tasks').update({ due_date: dueDate }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
+    setBulkBusy(false)
   }
 
   const handleMemberRoleChange = (role, userId) => {
@@ -160,6 +197,12 @@ export default function MyTasks() {
     if (filter === 'done') return t.status === 'done'
     return t.status !== 'done' // 'active'
   })
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((t) => selectedTaskIds.has(t.id))
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedTaskIds(allFilteredSelected ? new Set() : new Set(filtered.map((t) => t.id)))
+  }
 
   return (
     <div>
@@ -318,7 +361,26 @@ export default function MyTasks() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <>
+          <BulkTaskActionBar
+            count={selectedTaskIds.size}
+            busy={bulkBusy}
+            onClear={() => setSelectedTaskIds(new Set())}
+            onStatus={bulkSetStatus}
+            onDueDate={bulkSetDueDate}
+          />
+
+          <div className="flex items-center gap-2 px-1 mb-1">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={toggleSelectAllFiltered}
+              aria-label="Select all tasks"
+            />
+            <span className="text-xs" style={{ color: 'var(--ink-muted)' }}>Select all</span>
+          </div>
+
+          <ul className="space-y-2">
           {filtered.map((task) => {
             const overdue = isOverdue(task.due_date, task.status)
             return (
@@ -327,6 +389,14 @@ export default function MyTasks() {
                 className="flex items-center gap-3 rounded-lg border px-4 py-3 flex-wrap sm:flex-nowrap"
                 style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
               >
+                <input
+                  type="checkbox"
+                  checked={selectedTaskIds.has(task.id)}
+                  onChange={() => toggleTaskSelected(task.id)}
+                  className="flex-shrink-0"
+                  aria-label={`Select ${task.title}`}
+                />
+
                 <button
                   onClick={() => cycleStatus(task)}
                   className="flex-shrink-0"
@@ -369,7 +439,8 @@ export default function MyTasks() {
               </li>
             )
           })}
-        </ul>
+          </ul>
+        </>
       )}
     </div>
   )
