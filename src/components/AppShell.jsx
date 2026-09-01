@@ -7,6 +7,7 @@ import { getDisplayName } from '../lib/displayName'
 import { SunIcon, MoonIcon, MonitorIcon } from './icons'
 import NotificationBell from './NotificationBell'
 import UnreadBadge from './UnreadBadge'
+import GlobalSearch from './GlobalSearch'
 
 const NAV_LINKS = [
   { to: '/', label: 'Projects', end: true },
@@ -88,6 +89,7 @@ export default function AppShell({ children }) {
         </Link>
 
         <div className="flex items-center gap-3 min-w-0">
+          <GlobalSearch />
           <NotificationBell />
           {orgs.length > 1 && (
             <select
