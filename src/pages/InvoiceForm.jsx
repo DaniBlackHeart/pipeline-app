@@ -33,6 +33,12 @@ export default function InvoiceForm() {
   const [clientId, setClientId] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  // Whether the current clientEmail value came from the selected client's
+  // own record (true) vs. was typed by hand for this invoice specifically
+  // (false) -- drives whether the field below renders as read-only text
+  // or an editable input. Starts false so editing an existing invoice
+  // doesn't lock the field before a client has even been (re-)selected.
+  const [clientEmailFromRecord, setClientEmailFromRecord] = useState(false)
   const [projectId, setProjectId] = useState('')
   const [taskId, setTaskId] = useState('')
   const [currency, setCurrency] = useState('PHP')
@@ -64,6 +70,11 @@ export default function InvoiceForm() {
     setClientId(invoice.client_id || '')
     setClientName(invoice.client_name || '')
     setClientEmail(invoice.client_email || '')
+    // Editable, not locked to read-only -- this is whatever email was on
+    // the invoice when it was saved, which may no longer match the
+    // client's current record (or the invoice may predate this feature
+    // entirely). Re-selecting the client below re-syncs it.
+    setClientEmailFromRecord(false)
     setProjectId(invoice.project_id || '')
     setTaskId(invoice.task_id || '')
     setLinkType(invoice.task_id ? 'task' : 'project')
@@ -309,21 +320,52 @@ export default function InvoiceForm() {
                 id="invoice-client"
                 orgId={activeOrgId}
                 value={clientId}
-                onSelect={(c) => { setClientId(c?.id || ''); setClientName(c?.name || '') }}
+                onSelect={(c) => {
+                  setClientId(c?.id || '')
+                  setClientName(c?.name || '')
+                  // Auto-fill from the client's own record. Only actually
+                  // locks the field to read-only (below) when that record
+                  // has an email on file -- a client with none yet falls
+                  // through to a normal editable field instead of a dead
+                  // end with no way to fill in an email at all.
+                  setClientEmail(c?.email || '')
+                  setClientEmailFromRecord(Boolean(c?.email))
+                }}
                 label="Client name"
               />
             </div>
             <div>
               <label htmlFor="client-email" className="block text-sm font-medium mb-1">Client email</label>
-              <input
-                id="client-email"
-                type="email"
-                value={clientEmail}
-                onChange={(e) => setClientEmail(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                style={{ borderColor: 'var(--border)' }}
-                required
-              />
+              {clientEmailFromRecord ? (
+                <>
+                  <p id="client-email" className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--panel-sunken)' }}>
+                    {clientEmail}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--ink-muted)' }}>
+                    From {clientName}'s client record.{' '}
+                    {clientId && (
+                      <Link to={`/clients/${clientId}`} className="underline">Wrong email? Update it here.</Link>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <input
+                    id="client-email"
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    style={{ borderColor: 'var(--border)' }}
+                    required
+                  />
+                  {clientId && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ink-muted)' }}>
+                      This client has no email on file yet — entering one here only applies to this invoice.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium mb-1">This invoice is for</label>

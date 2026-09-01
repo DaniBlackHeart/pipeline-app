@@ -1172,6 +1172,14 @@ deployed, there's nothing new to add to Vercel here at all.
     **Automatically email clients about overdue invoices**, and confirm
     it saves. Log in as a non-admin and confirm they see neither that
     Settings toggle nor the invoice page's **Send reminder** button.
+40. Go to **Clients**, click **+ New client**, and fill in a name and an
+    email this time, then save. Go to **Invoices → + New invoice** and
+    pick that client from the **Client name** dropdown — confirm **Client
+    email** fills in on its own and shows as plain text, not a box you can
+    click into, with a link to the client's page underneath. Now pick (or
+    add) a client with no email on file and confirm the field turns back
+    into a normal editable box instead. Open the client you just created
+    from the invoice form and confirm its email shows correctly there too.
 
 ## Known limitations to know about
 
@@ -1219,6 +1227,11 @@ deployed, there's nothing new to add to Vercel here at all.
   fixed schedule for everyone who opts in. See "How client-facing
   overdue-invoice reminders work" in the README, and section 12 here for
   setup.
+- **Client email auto-fill only reaches one-off invoices, not recurring
+  ones.** `RecurringInvoiceForm.jsx` still uses a plain typed client name/
+  email with no link to the `clients` table at all — a separate, older
+  code path from the regular invoice form. See "How client email
+  auto-fill works" in the README.
 - **The mention-notification realtime subscription isn't org-scoped at
   the database level** (`chat_message_mentions` has no `org_id` column to
   filter on) — it filters only on `mentioned_user_id`, so someone who

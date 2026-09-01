@@ -13,6 +13,7 @@ export default function Clients() {
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [company, setCompany] = useState('')
   const [website, setWebsite] = useState('')
   const [saving, setSaving] = useState(false)
@@ -29,7 +30,7 @@ export default function Clients() {
       { data: taskRows, error: taskError },
       { data: invoiceRows, error: invoiceError },
     ] = await Promise.all([
-      supabase.from('clients').select('id, name, company, website').eq('org_id', activeOrgId).order('name', { ascending: true }),
+      supabase.from('clients').select('id, name, email, company, website').eq('org_id', activeOrgId).order('name', { ascending: true }),
       supabase.from('projects').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null),
       supabase.from('tasks').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null).is('deleted_at', null),
       supabase.from('invoices').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null),
@@ -71,6 +72,7 @@ export default function Clients() {
     const { error: insertError } = await supabase.from('clients').insert({
       org_id: activeOrgId,
       name: name.trim(),
+      email: email.trim() || null,
       company: company.trim() || null,
       website: website.trim() || null,
       created_by: userData?.user?.id,
@@ -81,6 +83,7 @@ export default function Clients() {
       return
     }
     setName('')
+    setEmail('')
     setCompany('')
     setWebsite('')
     setShowForm(false)
@@ -104,7 +107,7 @@ export default function Clients() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-lg border p-5 space-y-4 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label htmlFor="new-client-name" className="block text-sm font-medium mb-1">Client name</label>
               <input
@@ -115,6 +118,18 @@ export default function Clients() {
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--border)' }}
                 required
+              />
+            </div>
+            <div>
+              <label htmlFor="new-client-email" className="block text-sm font-medium mb-1">Email</label>
+              <input
+                id="new-client-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Used to auto-fill invoices"
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                style={{ borderColor: 'var(--border)' }}
               />
             </div>
             <div>
@@ -193,6 +208,7 @@ export default function Clients() {
                 style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}
               >
                 <h2 className="font-display font-bold text-lg leading-snug mb-1">{client.name}</h2>
+                {client.email && <p className="text-sm truncate" style={{ color: 'var(--ink-muted)' }}>{client.email}</p>}
                 {client.company && <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>{client.company}</p>}
                 {client.website && (
                   <p className="text-xs truncate mt-0.5" style={{ color: 'var(--ink-muted)' }}>{client.website}</p>

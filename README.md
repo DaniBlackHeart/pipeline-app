@@ -1157,6 +1157,44 @@ for "all of it."
   limitation on that), so a client who needs the actual invoice again
   still gets it the same manual way they got it the first time.
 
+## How client email auto-fill works
+
+- **The `clients` table now has its own `email` column** (`schema_client_
+  email.sql`, nullable — adding a client was never meant to require
+  knowing their email up front). It can be set three places: the "+ New
+  client" form (`Clients.jsx`), a client's own detail page (`ClientDetail.jsx`,
+  same inline-edit-on-blur pattern as Company/Website there), or inline
+  while adding a brand-new client from `ClientPicker`'s "+ Add a new
+  client…" option (used from New Invoice, New Project, and a standalone
+  task's client field).
+- **Selecting a client on the New/Edit Invoice form auto-fills the Client
+  email field from that client's own record**, instead of starting blank
+  and being retyped by hand every time. Once auto-filled, the field
+  renders as plain read-only text (with a link to the client's own page,
+  in case the email on file is wrong) rather than an editable input —
+  since at that point it's derived data, not something being typed in for
+  this invoice specifically.
+- **Falls back to an editable field, never a dead end, when the picked
+  client has no email on file yet.** `invoices.client_email` is mandatory
+  (DB-enforced), so a client with nothing saved would otherwise make the
+  form impossible to submit. That fallback value is only saved on the
+  invoice itself — it doesn't get written back to the client's record;
+  add it there directly if it should stick around for next time.
+- **Re-picking a different client always re-syncs the field** — including
+  overwriting a value that was manually typed for the previously-picked
+  client — since the whole point is that this field now follows the
+  selected client, not the other way around.
+- **Editing an existing invoice loads whatever email was saved on it at
+  the time, as an editable field, not locked to the client's current
+  record.** An invoice can predate this feature, or the client's email
+  may have changed since — re-selecting the client on that form re-syncs
+  it the same way it does for a new invoice.
+- **Recurring invoice templates (`RecurringInvoiceForm.jsx`) don't have
+  this yet** — that form still uses a plain typed client name/email pair
+  with no `ClientPicker`/`client_id` link at all, an older, separate code
+  path from the one-off invoice form. Worth a follow-up if recurring
+  invoices should get the same treatment.
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If

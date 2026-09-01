@@ -6,12 +6,15 @@ import { friendlyError } from '../lib/errorMessages'
 // Used wherever a project, standalone task, or invoice needs to link to a
 // client (NewProject, TaskDetail, InvoiceForm) instead of typing a name by
 // hand each time. Selecting or creating a client calls onSelect with the
-// full client row ({id, name, company, website}), or null when cleared.
+// full client row ({id, name, company, website, email}), or null when
+// cleared. InvoiceForm uses the email to auto-fill its own Client email
+// field -- see "How client email auto-fill works" in the README.
 export default function ClientPicker({ orgId, value, onSelect, label = 'Client', required = true, id = 'client-picker' }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
 
@@ -19,7 +22,7 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
     if (!orgId) return
     supabase
       .from('clients')
-      .select('id, name, company, website')
+      .select('id, name, company, website, email')
       .eq('org_id', orgId)
       .order('name', { ascending: true })
       .then(({ data, error: fetchError }) => {
@@ -46,8 +49,8 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
     const { data: userData } = await supabase.auth.getUser()
     const { data: inserted, error: insertError } = await supabase
       .from('clients')
-      .insert({ org_id: orgId, name: newName.trim(), created_by: userData?.user?.id })
-      .select('id, name, company, website')
+      .insert({ org_id: orgId, name: newName.trim(), email: newEmail.trim() || null, created_by: userData?.user?.id })
+      .select('id, name, company, website, email')
       .single()
     setCreating(false)
     if (insertError) {
@@ -56,6 +59,7 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
     }
     setClients((prev) => [...prev, inserted].sort((a, b) => a.name.localeCompare(b.name)))
     setNewName('')
+    setNewEmail('')
     setAdding(false)
     onSelect(inserted)
   }
@@ -64,7 +68,7 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
     return (
       <div>
         <label htmlFor={`${id}-new`} className="block text-sm font-medium mb-1">{label}</label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-2">
           <input
             id={`${id}-new`}
             type="text"
@@ -75,6 +79,17 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
             style={{ borderColor: 'var(--border)' }}
             autoFocus
           />
+          <input
+            id={`${id}-new-email`}
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="Email (optional)"
+            className="flex-1 min-w-0 rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={handleCreate}
@@ -86,7 +101,7 @@ export default function ClientPicker({ orgId, value, onSelect, label = 'Client',
           </button>
           <button
             type="button"
-            onClick={() => { setAdding(false); setNewName(''); setError('') }}
+            onClick={() => { setAdding(false); setNewName(''); setNewEmail(''); setError('') }}
             className="text-sm rounded-md border px-3 py-2 flex-shrink-0"
             style={{ borderColor: 'var(--border)' }}
           >
