@@ -871,13 +871,17 @@ for "all of it."
   quantity and rate stay normal, editable fields afterward, same as any
   other line — editing the rate before saving changes what actually gets
   billed.
-- **"Mark unbilled" is the safety valve.** If a "Logged time" line item
-  ever gets deleted from an invoice after having been added (during an
-  edit, say), the underlying entries stay flagged billed — they don't
-  automatically release themselves just because the line disappeared.
-  Each entry on the task page has a "Mark unbilled" action for exactly
-  this, so the hours can be pulled onto a different invoice later instead
-  of being stuck.
+- **"Mark unbilled" is the safety valve, and it's admin-only.** If a
+  "Logged time" line item ever gets deleted from an invoice after having
+  been added (during an edit, say), the underlying entries stay flagged
+  billed — they don't automatically release themselves just because the
+  line disappeared. An org admin can use "Mark unbilled" on the task page
+  to free those hours up for a different invoice. This is deliberately
+  restricted to admins — an entry's own owner can't flip their own
+  billing status once it's set (enforced in the database, not just
+  hidden in the UI), so a client can't end up double-billed for the same
+  hours by an entry quietly getting unbilled and re-pulled without an
+  admin's involvement.
 - **You can only log time under your own account.** No admin correcting
   or backdating someone else's hours on their behalf yet — a mistake
   needs the person who logged it to fix or delete their own entry (or an

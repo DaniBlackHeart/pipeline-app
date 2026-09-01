@@ -34,7 +34,8 @@ function deriveInvoiceDisplayStatus(invoice) {
 
 export default function TaskDetail() {
   const { taskId } = useParams()
-  const { activeOrgId, user } = useAuth()
+  const { activeOrgId, activeOrg, user } = useAuth()
+  const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
   const navigate = useNavigate()
 
   const [task, setTask] = useState(null)
@@ -702,7 +703,7 @@ export default function TaskDetail() {
                   {entry.billed && <span className="ml-1.5 text-xs font-mono uppercase" style={{ color: 'var(--ink-muted)' }}>(billed)</span>}
                 </span>
                 <span className="flex items-center gap-2 flex-shrink-0">
-                  {entry.billed && (
+                  {entry.billed && isAdmin && (
                     <button onClick={() => handleUnbillEntry(entry.id)} className="text-xs underline" style={{ color: 'var(--ink-muted)' }}>
                       Mark unbilled
                     </button>

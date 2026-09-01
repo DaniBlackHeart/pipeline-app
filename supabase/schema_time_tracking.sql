@@ -109,6 +109,47 @@ create policy "owner or admin can delete time entries"
   to authenticated
   using (user_id = auth.uid() or public.is_org_admin(org_id));
 
+-- The update policy above only checks who's touching the row -- it can't
+-- express "and this column may only change if you're an admin" on its
+-- own, since a WITH CHECK clause has no way to compare against the OLD
+-- row. Enforced here instead: without this, an entry's own owner could
+-- freely flip billed/invoice_id back and forth after an admin has
+-- already invoiced it (letting the same hours get pulled into a SECOND
+-- invoice later with no trace of the reset), attach an invoice_id that
+-- doesn't even belong to their org, or fabricate a rate_snapshot that
+-- was never the real resolved rate. org_id/task_id/user_id are locked
+-- unconditionally -- there's never a legitimate reason to move an
+-- existing entry to a different org, task, or person; that's what a new
+-- entry is for.
+create or replace function public.time_entries_guard_protected_fields()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.org_id is distinct from old.org_id
+     or new.task_id is distinct from old.task_id
+     or new.user_id is distinct from old.user_id then
+    raise exception 'org_id, task_id, and user_id cannot be changed on an existing time entry';
+  end if;
+
+  if not public.is_org_admin(old.org_id) then
+    if new.billed is distinct from old.billed
+       or new.invoice_id is distinct from old.invoice_id
+       or new.rate_snapshot is distinct from old.rate_snapshot then
+      raise exception 'Only an organization admin can change billing status on a time entry';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists time_entries_guard_protected_fields on public.time_entries;
+create trigger time_entries_guard_protected_fields before update on public.time_entries
+  for each row execute function public.time_entries_guard_protected_fields();
+
 drop trigger if exists time_entries_set_updated_at on public.time_entries;
 create trigger time_entries_set_updated_at before update on public.time_entries
   for each row execute procedure public.set_updated_at();
