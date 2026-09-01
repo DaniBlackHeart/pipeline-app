@@ -1112,6 +1112,51 @@ for "all of it."
   is a reasonable later addition but wasn't built ahead of need, consistent
   with this project's free-tier-now approach.
 
+## How client-facing overdue-invoice reminders work
+
+- **Two ways to send one, both landing in the same place.** A **"Send
+  reminder"** button appears on any overdue invoice's page for admins
+  (`InvoiceDetail.jsx`) and sends immediately, one click. Separately, a new
+  daily cron (`api/invoice-reminders.js`) can send them automatically —
+  but only for workspaces that turn it on, per workspace, in **Settings →
+  Overdue invoice reminders** (`organizations.auto_invoice_reminders`,
+  **off by default**). Nothing goes to a client automatically until an
+  admin opts that workspace in; the manual button always works regardless
+  of the setting.
+- **Automatic cadence: once as soon as it's overdue, then every 7 days
+  until paid.** Both the manual button and the automatic job write the
+  same `invoices.last_reminder_sent_at` column, so a manual send also
+  resets the automatic job's 7-day clock instead of the two overlapping
+  and double-sending on the same day.
+- **"Overdue" isn't a stored status — it's computed the same way it
+  already was everywhere else in the app** (`status = 'sent'` and
+  `due_date` in the past, the same predicate `deriveInvoiceDisplayStatus()`
+  uses on `ProjectDetail.jsx`/`TaskDetail.jsx`/`ClientDetail.jsx`), just
+  replicated server-side in the cron since a database query can't filter
+  on a client-computed value.
+- **The reminder email includes a "Pay now" link when one exists** — the
+  invoice's own Stripe payment link if one was generated, falling back to
+  the workspace's permanent Wise payment link otherwise. If neither is
+  set, the email still goes out with the amount, due date, and days
+  overdue, just without a payment button.
+- **One new serverless function** (`api/invoice-reminders.js`, #10 of
+  Vercel Hobby's 12), dispatched by HTTP method rather than sharing a file
+  with `daily-digest.js` — GET is the cron path (`CRON_SECRET`-gated,
+  service-role key, bypasses RLS same as every other cron here), POST is
+  the manual path (the caller's own session token, independently verified
+  as an org admin server-side — never trusts a client-supplied role).
+  Extracted the actual Resend send call the digest cron already had into
+  a shared `api/_email.js` helper so this didn't need its own copy.
+- **Manual sending is admin-only**, matching the permission level of the
+  other consequential actions already on this page (status changes,
+  editing) — not opened up to every member, since it's an email that goes
+  directly to a real client.
+- **No PDF attached.** This is a plain-text-style reminder nudging about
+  an existing invoice, not a resend of the invoice document itself —
+  invoices still aren't emailed automatically in general (see the known
+  limitation on that), so a client who needs the actual invoice again
+  still gets it the same manual way they got it the first time.
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If

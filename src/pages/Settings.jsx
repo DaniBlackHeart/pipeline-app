@@ -76,6 +76,11 @@ export default function Settings() {
   const [invoicePrefixError, setInvoicePrefixError] = useState('')
   const [invoicePrefixSaved, setInvoicePrefixSaved] = useState(false)
 
+  const [autoInvoiceReminders, setAutoInvoiceReminders] = useState(false)
+  const [autoRemindersSaving, setAutoRemindersSaving] = useState(false)
+  const [autoRemindersError, setAutoRemindersError] = useState('')
+  const [autoRemindersSaved, setAutoRemindersSaved] = useState(false)
+
   const [billerName, setBillerName] = useState('')
   const [billerCompany, setBillerCompany] = useState('')
   const [billerAddress, setBillerAddress] = useState('')
@@ -398,7 +403,7 @@ export default function Settings() {
     if (!activeOrgId) return
     setLoading(true)
     const [{ data, error: fetchError }, { data: prefsData, error: prefsError }] = await Promise.all([
-      supabase.from('organizations').select('wise_payment_link, invoice_prefix, biller_name, biller_company, biller_address, default_hourly_rate').eq('id', activeOrgId).single(),
+      supabase.from('organizations').select('wise_payment_link, invoice_prefix, biller_name, biller_company, biller_address, default_hourly_rate, auto_invoice_reminders').eq('id', activeOrgId).single(),
       supabase.from('notification_preferences').select('*').eq('org_id', activeOrgId).eq('user_id', user?.id).maybeSingle(),
     ])
     if (fetchError) {
@@ -412,6 +417,7 @@ export default function Settings() {
     setBillerCompany(data.biller_company || '')
     setBillerAddress(data.biller_address || '')
     setDefaultHourlyRate(data.default_hourly_rate != null ? String(data.default_hourly_rate) : '')
+    setAutoInvoiceReminders(Boolean(data.auto_invoice_reminders))
 
     if (prefsData) {
       setPrefs(prefsData)
@@ -463,6 +469,25 @@ export default function Settings() {
       return
     }
     setInvoicePrefixSaved(true)
+  }
+
+  const handleToggleAutoReminders = async () => {
+    setAutoRemindersError('')
+    setAutoRemindersSaved(false)
+    const next = !autoInvoiceReminders
+    setAutoInvoiceReminders(next)
+    setAutoRemindersSaving(true)
+    const { error: updateError } = await supabase
+      .from('organizations')
+      .update({ auto_invoice_reminders: next })
+      .eq('id', activeOrgId)
+    setAutoRemindersSaving(false)
+    if (updateError) {
+      setAutoInvoiceReminders(!next)
+      setAutoRemindersError(friendlyError(updateError))
+      return
+    }
+    setAutoRemindersSaved(true)
   }
 
   const handleSaveBilling = async (e) => {
@@ -636,6 +661,38 @@ export default function Settings() {
           </button>
         )}
       </form>
+
+      <div className="rounded-lg border p-5 space-y-3" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+        <div>
+          <h2 className="font-display font-bold text-lg mb-1">Overdue invoice reminders</h2>
+          <p className="text-xs" style={{ color: 'var(--ink-muted)' }}>
+            Off by default. When on, a daily check emails the client on an overdue invoice automatically — once as
+            soon as it's overdue, then again every 7 days until it's marked paid. A "Send reminder" button on any
+            overdue invoice works either way, regardless of this setting.
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={autoInvoiceReminders}
+            onChange={handleToggleAutoReminders}
+            disabled={!isAdmin || autoRemindersSaving}
+          />
+          Automatically email clients about overdue invoices
+        </label>
+
+        {autoRemindersError && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert-text)' }} role="alert">
+            {autoRemindersError}
+          </p>
+        )}
+        {autoRemindersSaved && (
+          <p className="text-sm rounded-md px-3 py-2" style={{ background: 'var(--tally-done-soft)', color: 'var(--tally-done-text)' }} role="status">
+            Saved.
+          </p>
+        )}
+      </div>
 
       {prefs && (
         <form onSubmit={handleSavePrefs} className="rounded-lg border p-5 space-y-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>

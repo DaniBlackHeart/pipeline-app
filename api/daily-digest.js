@@ -11,6 +11,7 @@
 // VITE_ prefix (which would bundle it into the client JS).
 import { createClient } from '@supabase/supabase-js'
 import { logServerError } from './_authHelpers.js'
+import { sendEmail, escapeHtml } from './_email.js'
 
 export default async function handler(req, res) {
   const authHeader = req.headers.authorization
@@ -165,30 +166,5 @@ async function sendDigestEmail(apiKey, fromAddress, toEmail, orgName, sections) 
     </div>
   `
 
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromAddress || 'Pipeline <onboarding@resend.dev>',
-        to: toEmail,
-        subject: `${orgName}: today's digest`,
-        html,
-      }),
-    })
-    if (!res.ok) {
-      const body = await res.text().catch(() => '')
-      return { ok: false, error: `Resend responded ${res.status}${body ? ` — ${body.slice(0, 200)}` : ''}` }
-    }
-    return { ok: true }
-  } catch (err) {
-    return { ok: false, error: err.message }
-  }
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  return sendEmail({ apiKey, from: fromAddress, to: toEmail, subject: `${orgName}: today's digest`, html })
 }

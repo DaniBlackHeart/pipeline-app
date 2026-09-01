@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { formatMoney } from '../lib/currency'
 import { friendlyError } from '../lib/errorMessages'
 import { getStripeStatus, generateStripePaymentLink } from '../lib/stripe'
+import { sendInvoiceReminder } from '../lib/invoiceReminders'
 import ActivityLog from '../components/ActivityLog'
 import TallyDot from '../components/TallyDot'
 
@@ -24,6 +25,9 @@ export default function InvoiceDetail() {
   const [stripeConnected, setStripeConnected] = useState(false)
   const [stripeLinkBusy, setStripeLinkBusy] = useState(false)
   const [stripeLinkError, setStripeLinkError] = useState('')
+
+  const [reminderBusy, setReminderBusy] = useState(false)
+  const [reminderError, setReminderError] = useState('')
 
   useEffect(() => {
     if (!activeOrgId) return
@@ -76,6 +80,18 @@ export default function InvoiceDetail() {
   }, [invoiceId, activeOrgId])
 
   useEffect(() => { load() }, [load])
+
+  const handleSendReminder = async () => {
+    setReminderError('')
+    setReminderBusy(true)
+    try {
+      const { sentAt } = await sendInvoiceReminder(activeOrgId, invoiceId)
+      setInvoice((prev) => ({ ...prev, last_reminder_sent_at: sentAt }))
+    } catch (err) {
+      setReminderError(err.message)
+    }
+    setReminderBusy(false)
+  }
 
   const handleStatusChange = async (status) => {
     const fields = { status, paid_at: status === 'paid' ? new Date().toISOString() : null }
@@ -144,8 +160,24 @@ export default function InvoiceDetail() {
       )}
 
       {isOverdue && (
-        <p className="text-sm rounded-md px-3 py-2 mb-4 print:hidden" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert-text)' }}>
-          This invoice is overdue.
+        <div
+          className="flex items-center justify-between gap-3 flex-wrap text-sm rounded-md px-3 py-2 mb-4 print:hidden"
+          style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert-text)' }}
+        >
+          <span>
+            This invoice is overdue.
+            {invoice.last_reminder_sent_at && ` Last reminder sent ${new Date(invoice.last_reminder_sent_at).toLocaleDateString()}.`}
+          </span>
+          {isAdmin && invoice.client_email && (
+            <button onClick={handleSendReminder} disabled={reminderBusy} className="underline flex-shrink-0 disabled:opacity-60">
+              {reminderBusy ? 'Sending…' : 'Send reminder'}
+            </button>
+          )}
+        </div>
+      )}
+      {reminderError && (
+        <p className="text-sm rounded-md px-3 py-2 mb-4 print:hidden" style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert-text)' }} role="alert">
+          {reminderError}
         </p>
       )}
 

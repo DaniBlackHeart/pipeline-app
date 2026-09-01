@@ -792,7 +792,47 @@ other.
    would create a second account instead; leave that setting off to keep
    the behavior described in #4.)
 
-## 12. Try it
+## 12. Optional: automatic overdue-invoice reminders
+
+Skip this if you'd rather send reminders yourself — every overdue
+invoice's page has a **"Send reminder"** button regardless of whether
+this section is set up at all; that button works the moment `RESEND_API_KEY`
+exists (see section 4), no extra config needed. This section is only for
+the *automatic* daily version.
+
+Reuses the exact same env vars as the daily digest in section 4
+(`CRON_SECRET`, `RESEND_API_KEY`, `DIGEST_FROM_EMAIL`) — if that's already
+deployed, there's nothing new to add to Vercel here at all.
+
+1. Confirm `schema_invoice_reminders.sql` has been run in the Supabase SQL
+   editor (adds `organizations.auto_invoice_reminders`, off by default, and
+   `invoices.last_reminder_sent_at`).
+2. Confirm `vercel.json` includes the `/api/invoice-reminders` cron entry
+   (already in this repo) and that section 4's three env vars are set in
+   Vercel, then redeploy if you haven't already.
+3. **Nothing gets emailed to any client automatically until an admin turns
+   it on, per workspace** — go to **Settings**, find **Overdue invoice
+   reminders**, and check **Automatically email clients about overdue
+   invoices**.
+4. Once on, the daily job sends one reminder as soon as a `sent` invoice's
+   due date passes, then repeats every 7 days until the invoice is marked
+   **Paid**. It reuses the invoice's own Stripe payment link if one was
+   generated (section 10), or falls back to the workspace's Wise payment
+   link (section 1) — same "Pay now" button either way.
+5. Test without waiting for the cron: create an invoice, set its status to
+   **Sent** with a due date in the past, then open it and click **Send
+   reminder** — this always works immediately regardless of the org
+   toggle, and confirms `RESEND_API_KEY` is actually configured correctly
+   before trusting the automatic version to run silently overnight.
+6. To test the actual cron path (not just the button) once at least one
+   workspace has the Settings toggle on:
+   `curl https://your-app.vercel.app/api/invoice-reminders -H "Authorization: Bearer YOUR_CRON_SECRET"`
+   A healthy response looks like
+   `{"orgsProcessed":1,"remindersSent":0,"errors":[]}` —
+   `remindersSent: 0` is correct if nothing in that workspace is both
+   overdue and past the 7-day reminder cadence yet, not broken.
+
+## 13. Try it
 
 1. Visit the deployed URL (or localhost), sign up with an email + password.
    Try a clearly fake domain first (e.g. `you@thisdomaindoesnotexist12345.com`)
@@ -1123,6 +1163,15 @@ other.
     confirmation prompt, then that it's gone from Trash for good. Log in
     as a non-admin and confirm the **Delete permanently** button doesn't
     appear for them, only **Restore**.
+39. Create an invoice with a real client email you can check, set its
+    status to **Sent**, and give it a due date in the past — confirm the
+    orange "This invoice is overdue" banner appears with a **Send
+    reminder** button. Click it and confirm the client inbox actually
+    receives the email (requires `RESEND_API_KEY` — see section 4/12).
+    Then go to **Settings → Overdue invoice reminders**, turn on
+    **Automatically email clients about overdue invoices**, and confirm
+    it saves. Log in as a non-admin and confirm they see neither that
+    Settings toggle nor the invoice page's **Send reminder** button.
 
 ## Known limitations to know about
 
@@ -1164,6 +1213,12 @@ other.
   deletes it — there's no scheduled cleanup job. A scheduled purge (e.g.
   after 30 days) is a reasonable later addition, not built ahead of need.
   See "How task trash (soft delete) works" in the README.
+- **Automatic overdue-invoice reminders send a plain reminder, not the
+  invoice itself.** No PDF attachment, and the cadence (once, then every
+  7 days) isn't configurable per workspace or per invoice yet — it's one
+  fixed schedule for everyone who opts in. See "How client-facing
+  overdue-invoice reminders work" in the README, and section 12 here for
+  setup.
 - **The mention-notification realtime subscription isn't org-scoped at
   the database level** (`chat_message_mentions` has no `org_id` column to
   filter on) — it filters only on `mentioned_user_id`, so someone who
