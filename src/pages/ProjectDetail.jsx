@@ -93,7 +93,7 @@ export default function ProjectDetail() {
     const [{ data: projectRow, error: projectError }, { data: taskRows, error: taskError }, { data: memberRows, error: memberError }, { data: orgRow }] =
       await Promise.all([
         supabase.from('projects').select('*').eq('id', projectId).single(),
-        supabase.from('tasks').select('*').eq('project_id', projectId).order('position', { ascending: true }),
+        supabase.from('tasks').select('*').eq('project_id', projectId).is('deleted_at', null).order('position', { ascending: true }),
         supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),
         supabase.from('organizations').select('default_hourly_rate').eq('id', activeOrgId).single(),
       ])
@@ -208,10 +208,13 @@ export default function ProjectDetail() {
     if (updateError) setError(friendlyError(updateError))
   }
 
+  // Moves the task to Trash (deleted_at set) rather than deleting it
+  // outright -- it disappears from this list (which only loads
+  // deleted_at is null rows) but is recoverable from /trash.
   const deleteTask = async (taskId) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId))
-    const { error: deleteError } = await supabase.from('tasks').delete().eq('id', taskId)
-    if (deleteError) setError(friendlyError(deleteError))
+    const { error: updateError } = await supabase.from('tasks').update({ deleted_at: new Date().toISOString() }).eq('id', taskId)
+    if (updateError) setError(friendlyError(updateError))
   }
 
   const toggleTaskSelected = (taskId) => {
@@ -266,11 +269,11 @@ export default function ProjectDetail() {
   const bulkDeleteTasks = async () => {
     const ids = [...selectedTaskIds]
     if (ids.length === 0) return
-    if (!window.confirm(`Delete ${ids.length} task${ids.length === 1 ? '' : 's'}? This can't be undone.`)) return
+    if (!window.confirm(`Move ${ids.length} task${ids.length === 1 ? '' : 's'} to trash? You can restore from Trash later.`)) return
     setBulkBusy(true)
     setTasks((prev) => prev.filter((t) => !selectedTaskIds.has(t.id)))
-    const { error: deleteError } = await supabase.from('tasks').delete().in('id', ids)
-    if (deleteError) setError(friendlyError(deleteError))
+    const { error: updateError } = await supabase.from('tasks').update({ deleted_at: new Date().toISOString() }).in('id', ids)
+    if (updateError) setError(friendlyError(updateError))
     setSelectedTaskIds(new Set())
     setBulkBusy(false)
   }
@@ -746,9 +749,10 @@ export default function ProjectDetail() {
                 onClick={() => deleteTask(task.id)}
                 className="text-xs flex-shrink-0"
                 style={{ color: 'var(--tally-alert)' }}
-                aria-label={`Delete ${task.title}`}
+                aria-label={`Move ${task.title} to trash`}
+                title="Move to trash"
               >
-                Delete
+                Trash
               </button>
             </li>
           ))}

@@ -31,7 +31,7 @@ export default function Clients() {
     ] = await Promise.all([
       supabase.from('clients').select('id, name, company, website').eq('org_id', activeOrgId).order('name', { ascending: true }),
       supabase.from('projects').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null),
-      supabase.from('tasks').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null),
+      supabase.from('tasks').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null).is('deleted_at', null),
       supabase.from('invoices').select('client_id').eq('org_id', activeOrgId).not('client_id', 'is', null),
     ])
 

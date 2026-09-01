@@ -146,7 +146,29 @@ export default function TaskDetail() {
     if (updateError) setError(friendlyError(updateError))
   }
 
+  // "Delete" moves a task to Trash (deleted_at set) rather than removing
+  // it outright -- stays on this page afterward so the Restore option in
+  // the banner below is immediately available if it was a mistake.
+  // Permanent removal only happens via handlePermanentlyDeleteTask.
   const handleDeleteTask = async () => {
+    const deletedAt = new Date().toISOString()
+    setTask((prev) => ({ ...prev, deleted_at: deletedAt }))
+    const { error: updateError } = await supabase.from('tasks').update({ deleted_at: deletedAt }).eq('id', taskId)
+    if (updateError) setError(friendlyError(updateError))
+  }
+
+  const handleRestoreTask = async () => {
+    setTask((prev) => ({ ...prev, deleted_at: null }))
+    const { error: updateError } = await supabase.from('tasks').update({ deleted_at: null }).eq('id', taskId)
+    if (updateError) setError(friendlyError(updateError))
+  }
+
+  // Admin-only: this is the one truly irreversible action in the trash
+  // flow, unlike the soft-delete above -- matches the app's existing
+  // pattern of gating higher-stakes actions (billing fields, task
+  // creation) to workspace admins.
+  const handlePermanentlyDeleteTask = async () => {
+    if (!window.confirm('Permanently delete this task? This cannot be undone.')) return
     const { error: deleteError } = await supabase.from('tasks').delete().eq('id', taskId)
     if (deleteError) {
       setError(friendlyError(deleteError))
@@ -191,6 +213,7 @@ export default function TaskDetail() {
       .from('tasks')
       .select('id, title, project_id, projects ( name )')
       .eq('org_id', activeOrgId)
+      .is('deleted_at', null)
       .ilike('title', `%${query.trim()}%`)
       .neq('id', taskId)
       .limit(8)
@@ -314,6 +337,21 @@ export default function TaskDetail() {
         </p>
       )}
 
+      {task.deleted_at && (
+        <div
+          className="flex items-center justify-between gap-3 flex-wrap text-sm rounded-md px-3 py-2 mb-4"
+          style={{ background: 'var(--tally-alert-soft)', color: 'var(--tally-alert-text)' }}
+        >
+          <span>This task is in Trash (deleted {new Date(task.deleted_at).toLocaleDateString()}).</span>
+          <div className="flex gap-3 flex-shrink-0">
+            <button onClick={handleRestoreTask} className="underline">Restore</button>
+            {isAdmin && (
+              <button onClick={handlePermanentlyDeleteTask} className="underline">Delete permanently</button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 mb-6">
       <div className="rounded-lg border p-5" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -331,9 +369,11 @@ export default function TaskDetail() {
               <option value="done">Completed</option>
             </select>
           </div>
-          <button onClick={handleDeleteTask} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
-            Delete task
-          </button>
+          {!task.deleted_at && (
+            <button onClick={handleDeleteTask} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
+              Move to trash
+            </button>
+          )}
         </div>
 
         <label htmlFor="task-title" className="sr-only">Task title</label>

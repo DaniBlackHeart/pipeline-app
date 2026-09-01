@@ -97,8 +97,9 @@ export default function BulkTaskActionBar({
           onClick={onDelete}
           className="text-xs ml-auto flex-shrink-0"
           style={{ color: 'var(--tally-alert)' }}
+          title="Move to trash"
         >
-          Delete selected
+          Move to trash
         </button>
       )}
 

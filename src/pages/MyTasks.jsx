@@ -52,6 +52,7 @@ export default function MyTasks() {
       .from('tasks')
       .select('id, title, status, due_date, project_id, projects ( id, name )')
       .eq('org_id', activeOrgId)
+      .is('deleted_at', null)
 
     query = richAssigneeTaskIds.length > 0
       ? query.or(`assignee_id.eq.${user.id},id.in.(${richAssigneeTaskIds.join(',')})`)

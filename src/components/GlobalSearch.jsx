@@ -96,6 +96,7 @@ export default function GlobalSearch() {
           .from('tasks')
           .select('id, title, status, project_id, projects ( name )')
           .eq('org_id', activeOrgId)
+          .is('deleted_at', null)
           .ilike('title', like)
           .limit(RESULT_LIMIT),
         supabase.from('clients').select('id, name, company').eq('org_id', activeOrgId).ilike('name', like).limit(RESULT_LIMIT),

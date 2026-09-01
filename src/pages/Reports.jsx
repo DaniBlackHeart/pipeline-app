@@ -86,7 +86,7 @@ export default function Reports() {
     ] = await Promise.all([
       invoiceQuery,
       supabase.from('projects').select('id, name, status, start_date, due_date').eq('org_id', activeOrgId).neq('status', 'archived'),
-      supabase.from('tasks').select('id, title, status, project_id, start_date, due_date, assignee_id').eq('org_id', activeOrgId),
+      supabase.from('tasks').select('id, title, status, project_id, start_date, due_date, assignee_id').eq('org_id', activeOrgId).is('deleted_at', null),
       supabase.from('task_assignees').select('task_id, user_id, role_label, profiles ( full_name, nickname )').eq('org_id', activeOrgId),
       supabase.from('task_comments').select('task_id').eq('org_id', activeOrgId),
       supabase.from('org_members').select('user_id, profiles ( id, full_name, nickname )').eq('org_id', activeOrgId),

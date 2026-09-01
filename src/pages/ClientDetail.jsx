@@ -56,7 +56,7 @@ export default function ClientDetail() {
     const [{ data: projectRows }, { data: directTaskRows }, { data: invoiceRows }] = await Promise.all([
       supabase.from('projects').select('id, name, status, due_date').eq('client_id', clientId).order('created_at', { ascending: false }),
       // Standalone tasks linked directly to this client.
-      supabase.from('tasks').select('id, title, status, project_id, projects ( name )').eq('client_id', clientId),
+      supabase.from('tasks').select('id, title, status, project_id, projects ( name )').eq('client_id', clientId).is('deleted_at', null),
       supabase.from('invoices').select('id, invoice_number, status, currency, total_amount, due_date').eq('client_id', clientId).order('issue_date', { ascending: false }),
     ])
 
@@ -69,6 +69,7 @@ export default function ClientDetail() {
       const { data } = await supabase
         .from('tasks').select('id, title, status, project_id, projects ( name )')
         .in('project_id', projectIds)
+        .is('deleted_at', null)
       viaProjectTaskRows = data || []
     }
     const taskMap = new Map()

@@ -32,6 +32,7 @@ const Chat = lazy(() => import('./pages/Chat'))
 const Admin = lazy(() => import('./pages/Admin'))
 const TaskTemplates = lazy(() => import('./pages/TaskTemplates'))
 const TaskTemplateDetail = lazy(() => import('./pages/TaskTemplateDetail'))
+const Trash = lazy(() => import('./pages/Trash'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 
 function PageFallback() {
@@ -121,6 +122,7 @@ function AppRoutes() {
       <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
       <Route path="/task-templates" element={<ProtectedRoute><TaskTemplates /></ProtectedRoute>} />
       <Route path="/task-templates/:templateId" element={<ProtectedRoute><TaskTemplateDetail /></ProtectedRoute>} />
+      <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
       {/* Route-level guarding is a UI nicety only -- the real check is
           server-side in api/admin.js (requirePlatformAdmin). Landing here
           without being the platform admin just gets a 403 from every call

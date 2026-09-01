@@ -32,7 +32,7 @@ export default function Calendar() {
     const [{ data: eventRows, error: eventsError }, { data: taskRows, error: tasksError }, { data: projectRows, error: projectsError }] =
       await Promise.all([
         supabase.from('calendar_events').select('*').eq('org_id', activeOrgId),
-        supabase.from('tasks').select('id, project_id, title, status, due_date').eq('org_id', activeOrgId).not('due_date', 'is', null),
+        supabase.from('tasks').select('id, project_id, title, status, due_date').eq('org_id', activeOrgId).not('due_date', 'is', null).is('deleted_at', null),
         supabase.from('projects').select('id, name, status, due_date').eq('org_id', activeOrgId).not('due_date', 'is', null),
       ])
 

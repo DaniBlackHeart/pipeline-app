@@ -167,6 +167,7 @@ export async function searchTasksToChat(orgId, query, excludeTaskIds = []) {
     .from('tasks')
     .select('id, title, projects ( name )')
     .eq('org_id', orgId)
+    .is('deleted_at', null)
     .ilike('title', `%${trimmed}%`)
     .limit(8)
   if (error) throw error

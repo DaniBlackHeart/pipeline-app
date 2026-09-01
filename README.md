@@ -1061,6 +1061,57 @@ for "all of it."
   it's worth revisiting if task deletion should be admin-gated generally
   (tracked as an open question, not decided here).
 
+## How task trash (soft delete) works
+
+- **"Delete" no longer removes a task immediately — it sets a `deleted_at`
+  timestamp and the task disappears from every normal view, recoverable
+  from a new Trash page (`src/pages/Trash.jsx`, linked from the name
+  dropdown next to Task Templates).** Schema change:
+  `supabase/schema_task_soft_delete.sql` adds the nullable
+  `deleted_at timestamptz` column plus an `(org_id, deleted_at)` index — no
+  RLS policy changes were needed, since setting/clearing it is an ordinary
+  column update already covered by the existing row-level UPDATE policy,
+  and permanent removal from Trash goes through the existing DELETE
+  policy the same way a hard delete always did.
+- **Every list, report, search, and picker that reads from `tasks` now
+  filters on `deleted_at is null`** — the project task list, My Tasks,
+  Dashboard's counts, Reports' rollups and CSV export, Calendar's due-date
+  merge, Global Search, the client detail page's linked tasks, the "has
+  linked tasks" check on the Clients list, the task-to-task relation
+  picker, the invoice/recurring-invoice task pickers, and the chat
+  task-mention picker — 13 call sites across 11 files. A trashed task
+  stops appearing anywhere in the app except Trash itself and, if you
+  still have the direct link, its own detail page (see next point).
+- **One deliberate exception: unbilled time entries on a trashed task
+  still count toward that project's unbilled total for invoicing.**
+  Moving a task to trash doesn't erase the work that was actually logged
+  against it — treating already-logged time as unbillable the moment its
+  task is trashed would be a real (and easy to miss) revenue loss, not a
+  cosmetic issue, so `fetchUnbilledForProject()` in `src/lib/timeTracking.js`
+  was deliberately left unfiltered rather than "fixed" to match the
+  pattern everywhere else.
+- **Opening a trashed task directly (`/tasks/:id`) doesn't hide or
+  redirect it — it shows the task normally, with an alert banner** ("This
+  task is in Trash...") offering Restore and, for admins, Delete
+  permanently. A stray bookmark or link to a deleted task should explain
+  itself, not silently 404 or bounce you away.
+- **An existing invoice that references a task which later gets trashed
+  keeps showing that task's name, with a "(deleted)" suffix**
+  (`InvoiceDetail.jsx`) — the invoice itself doesn't change, it's just
+  labeled so it's clear the underlying task no longer shows up elsewhere.
+- **Restoring is open to any workspace member — the same permission level
+  moving a task to trash already had.** Permanently deleting is
+  admin-only, since unlike everything else in this feature, it's the one
+  step that's actually irreversible; enforced in the application layer
+  (`Trash.jsx`, `TaskDetail.jsx`), the same way admin-only task creation
+  already is, since there's no existing precedent in this schema for a
+  role check inside an RLS policy itself.
+- **No automatic purge.** Trashed tasks stay there indefinitely until
+  someone restores or permanently deletes them — simplest thing that's
+  sufficient for now; a scheduled cleanup (e.g. auto-purge after 30 days)
+  is a reasonable later addition but wasn't built ahead of need, consistent
+  with this project's free-tier-now approach.
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If

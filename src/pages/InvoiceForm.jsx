@@ -95,6 +95,7 @@ export default function InvoiceForm() {
       .from('tasks')
       .select('id, title, project_id, projects ( name, hourly_rate )')
       .eq('org_id', activeOrgId)
+      .is('deleted_at', null)
       .order('title', { ascending: true })
       .then(({ data, error: taskError }) => {
         if (taskError) setError(friendlyError(taskError))

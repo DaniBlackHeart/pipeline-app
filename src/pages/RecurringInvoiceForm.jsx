@@ -46,6 +46,7 @@ export default function RecurringInvoiceForm() {
       .from('tasks')
       .select('id, title, project_id, projects ( name )')
       .eq('org_id', activeOrgId)
+      .is('deleted_at', null)
       .order('title')
       .then(({ data }) => setAllTasks(data || []))
   }, [activeOrgId])

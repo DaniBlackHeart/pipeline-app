@@ -174,6 +174,14 @@ export default function AppShell({ children }) {
                   Task Templates
                 </Link>
                 <Link
+                  to="/trash"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-3 py-2 text-sm hover-surface"
+                  role="menuitem"
+                >
+                  Trash
+                </Link>
+                <Link
                   to="/settings"
                   onClick={() => setMenuOpen(false)}
                   className="block px-3 py-2 text-sm hover-surface"

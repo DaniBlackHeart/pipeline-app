@@ -28,7 +28,8 @@ export default function Dashboard() {
       supabase
         .from('tasks')
         .select('project_id, status')
-        .eq('org_id', activeOrgId),
+        .eq('org_id', activeOrgId)
+        .is('deleted_at', null),
     ])
 
     if (projectError || taskError) {

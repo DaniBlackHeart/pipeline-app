@@ -1103,6 +1103,26 @@ other.
     and click **+ Add logged time** — confirm it adds one line item
     totaling both entries at the right rate, and that after saving the
     invoice, going back to the task shows both entries marked **(billed)**.
+36. Press **Ctrl/Cmd+K** from anywhere in the app (or click the search
+    button in the header) — confirm the search panel opens and auto-focuses
+    the input. Type part of an existing task's title, a client's name, and
+    an invoice number — confirm each returns grouped results (Tasks/
+    Clients/Invoices) and that clicking one navigates straight to that
+    record. Press Escape and confirm it closes.
+37. Open a project with a few tasks and check two or three of their row
+    checkboxes — confirm a bulk action bar appears above the list showing
+    "N selected." Use it to set a status and a due date across all of
+    them at once, then confirm each row updated. Also try **Select all**,
+    then **Clear**. Do the same on **My Tasks** and confirm it offers
+    status/due date only (no assignee or delete controls there).
+38. On a project's task list, click **Trash** on one task — confirm it
+    disappears from the list. Open the account menu and click **Trash** —
+    confirm the task shows up there with a "deleted" date. Click
+    **Restore** and confirm it's back on the project page. Trash it again,
+    then (as an admin) click **Delete permanently** and confirm the
+    confirmation prompt, then that it's gone from Trash for good. Log in
+    as a non-admin and confirm the **Delete permanently** button doesn't
+    appear for them, only **Restore**.
 
 ## Known limitations to know about
 
@@ -1138,6 +1158,12 @@ other.
   doesn't automatically release the underlying entries back to unbilled —
   use "Mark unbilled" on the task's own entry list for that. See "How
   time tracking works" in the README.
+- **Trashed tasks are never auto-purged.** "Delete" moves a task to Trash
+  (`/trash`, in the name dropdown) rather than removing it, and it stays
+  there indefinitely until someone restores it or an admin permanently
+  deletes it — there's no scheduled cleanup job. A scheduled purge (e.g.
+  after 30 days) is a reasonable later addition, not built ahead of need.
+  See "How task trash (soft delete) works" in the README.
 - **The mention-notification realtime subscription isn't org-scoped at
   the database level** (`chat_message_mentions` has no `org_id` column to
   filter on) — it filters only on `mentioned_user_id`, so someone who
