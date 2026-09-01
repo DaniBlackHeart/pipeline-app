@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { CURRENCIES } from '../lib/currency'
 import { friendlyError } from '../lib/errorMessages'
+import ClientPicker from '../components/ClientPicker'
 
 let tempIdCounter = 0
 const nextTempId = () => `temp-${++tempIdCounter}`
@@ -19,8 +20,15 @@ export default function RecurringInvoiceForm() {
   const [projects, setProjects] = useState([])
   const [allTasks, setAllTasks] = useState([])
   const [linkType, setLinkType] = useState('project') // 'project' | 'task'
+  const [clientId, setClientId] = useState('')
   const [clientName, setClientName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  // Same pattern as InvoiceForm.jsx: true once the email shown came from
+  // the selected client's own record (renders read-only), false when it's
+  // either untouched, typed by hand, or loaded from an existing template
+  // that may predate this client link or no longer match the client's
+  // current email.
+  const [clientEmailFromRecord, setClientEmailFromRecord] = useState(false)
   const [projectId, setProjectId] = useState('')
   const [taskId, setTaskId] = useState('')
   const [currency, setCurrency] = useState('PHP')
@@ -63,8 +71,10 @@ export default function RecurringInvoiceForm() {
       setLoading(false)
       return
     }
+    setClientId(tmpl.client_id || '')
     setClientName(tmpl.client_name || '')
     setClientEmail(tmpl.client_email || '')
+    setClientEmailFromRecord(false)
     setProjectId(tmpl.project_id || '')
     setTaskId(tmpl.task_id || '')
     setLinkType(tmpl.task_id ? 'task' : 'project')
@@ -88,7 +98,7 @@ export default function RecurringInvoiceForm() {
     e.preventDefault()
     setError('')
     if (!clientName.trim()) {
-      setError('Enter the client name.')
+      setError('Choose a client (or add a new one).')
       return
     }
     if (!clientEmail.trim()) {
@@ -116,6 +126,7 @@ export default function RecurringInvoiceForm() {
       org_id: activeOrgId,
       project_id: linkType === 'project' ? projectId : null,
       task_id: linkType === 'task' ? taskId : null,
+      client_id: clientId || null,
       client_name: clientName.trim(),
       client_email: clientEmail.trim(),
       currency,
@@ -178,14 +189,44 @@ export default function RecurringInvoiceForm() {
         <div className="rounded-lg border p-5" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="rec-client" className="block text-sm font-medium mb-1">Client name</label>
-              <input id="rec-client" type="text" value={clientName} onChange={(e) => setClientName(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} required />
+              <ClientPicker
+                id="rec-client"
+                orgId={activeOrgId}
+                value={clientId}
+                onSelect={(c) => {
+                  setClientId(c?.id || '')
+                  setClientName(c?.name || '')
+                  setClientEmail(c?.email || '')
+                  setClientEmailFromRecord(Boolean(c?.email))
+                }}
+                label="Client name"
+              />
             </div>
             <div>
               <label htmlFor="rec-email" className="block text-sm font-medium mb-1">Client email</label>
-              <input id="rec-email" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)}
-                className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} required />
+              {clientEmailFromRecord ? (
+                <>
+                  <p id="rec-email" className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', background: 'var(--panel-sunken)' }}>
+                    {clientEmail}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--ink-muted)' }}>
+                    From {clientName}'s client record.{' '}
+                    {clientId && (
+                      <Link to={`/clients/${clientId}`} className="underline">Wrong email? Update it here.</Link>
+                    )}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <input id="rec-email" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} required />
+                  {clientId && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--ink-muted)' }}>
+                      This client has no email on file yet — entering one here only applies to this template.
+                    </p>
+                  )}
+                </>
+              )}
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium mb-1">This is for</label>

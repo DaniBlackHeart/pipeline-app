@@ -1189,11 +1189,14 @@ for "all of it."
   record.** An invoice can predate this feature, or the client's email
   may have changed since — re-selecting the client on that form re-syncs
   it the same way it does for a new invoice.
-- **Recurring invoice templates (`RecurringInvoiceForm.jsx`) don't have
-  this yet** — that form still uses a plain typed client name/email pair
-  with no `ClientPicker`/`client_id` link at all, an older, separate code
-  path from the one-off invoice form. Worth a follow-up if recurring
-  invoices should get the same treatment.
+- **Recurring invoice templates (`RecurringInvoiceForm.jsx`) now use the
+  exact same `ClientPicker` + auto-fill/read-only pattern as the one-off
+  invoice form** — no longer a separate, older, plain-text-only code path.
+  `recurring_invoice_templates.client_id` already existed in the schema
+  (added and backfilled by `schema_clients.sql`) and was already carried
+  through to generated invoices by `generate_invoice_from_template()`; it
+  just wasn't exposed in this form's UI until now, so this was a matter of
+  wiring the existing column up rather than a schema change.
 
 ## How team management works
 

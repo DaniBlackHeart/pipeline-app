@@ -1180,6 +1180,13 @@ deployed, there's nothing new to add to Vercel here at all.
     add) a client with no email on file and confirm the field turns back
     into a normal editable box instead. Open the client you just created
     from the invoice form and confirm its email shows correctly there too.
+41. Go to **Invoices → Recurring → + New recurring invoice** and confirm
+    it now has the same **Client name** dropdown and auto-filling **Client
+    email** as the regular New Invoice form (rather than two plain typed
+    boxes). Pick a client with an email on file, save the template, then
+    manually trigger `api/daily-digest.js` (section 4) or wait for its
+    scheduled run — confirm the invoice it generates has the client
+    correctly linked (its detail page shows a **View client** link).
 
 ## Known limitations to know about
 
@@ -1227,11 +1234,6 @@ deployed, there's nothing new to add to Vercel here at all.
   fixed schedule for everyone who opts in. See "How client-facing
   overdue-invoice reminders work" in the README, and section 12 here for
   setup.
-- **Client email auto-fill only reaches one-off invoices, not recurring
-  ones.** `RecurringInvoiceForm.jsx` still uses a plain typed client name/
-  email with no link to the `clients` table at all — a separate, older
-  code path from the regular invoice form. See "How client email
-  auto-fill works" in the README.
 - **The mention-notification realtime subscription isn't org-scoped at
   the database level** (`chat_message_mentions` has no `org_id` column to
   filter on) — it filters only on `mentioned_user_id`, so someone who
