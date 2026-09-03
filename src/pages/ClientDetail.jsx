@@ -208,11 +208,6 @@ export default function ClientDetail() {
               className="w-full rounded-md border px-3 py-2 text-sm"
               style={{ borderColor: 'var(--border)' }}
             />
-            {client.website && (
-              <a href={client.website} target="_blank" rel="noreferrer" className="text-xs underline break-all mt-1 inline-block">
-                {client.website}
-              </a>
-            )}
           </div>
         </div>
 
