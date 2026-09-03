@@ -1234,6 +1234,15 @@ for "all of it."
   mentioned when this reorder was requested; kept in its existing spot
   between Brand guidelines and Activity rather than assuming it should be
   dropped.
+- **Page width now matches the rest of the app.** The page had its own
+  `max-w-2xl mx-auto` wrapper (672px, centered) left over from an older
+  layout, while task/project/invoice detail pages just use a plain `<div>`
+  and rely on `AppShell`'s own `max-w-5xl` content area (1024px) — this
+  made the client page visibly narrower and more cramped than everything
+  around it. Removed the extra wrapper so it fills the same width as the
+  rest of the app. `TicketDetail.jsx` still has the same leftover
+  `max-w-2xl` wrapper and wasn't touched here since it wasn't part of what
+  was asked — worth the same fix if it's noticed there too.
 
 ## How team management works
 

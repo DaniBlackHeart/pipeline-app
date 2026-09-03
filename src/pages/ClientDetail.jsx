@@ -127,7 +127,7 @@ export default function ClientDetail() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div>
       <Link to="/clients" className="text-sm inline-block mb-4" style={{ color: 'var(--ink-muted)' }}>&larr; All clients</Link>
 
       {error && (
