@@ -1197,6 +1197,12 @@ deployed, there's nothing new to add to Vercel here at all.
     confirm all three saved. Confirm Projects and Invoices render side by
     side above Tasks, with Brand guidelines, Files, and Activity still
     below in that order.
+43. If you have invoices in more than one currency, open **Invoices** and
+    confirm the Outstanding/Overdue/Paid boxes at the top show one line per
+    currency actually present (each with its correct symbol), instead of
+    one combined number under a single symbol. With everything in one
+    currency, each box should look exactly as it always did — a single
+    line.
 
 ## Known limitations to know about
 

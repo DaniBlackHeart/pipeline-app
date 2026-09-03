@@ -483,6 +483,17 @@ legal/
   `invoices` and `invoice_items`, not just hidden buttons, so it holds for
   API access too. A non-admin viewing an invoice sees its status as a
   plain badge instead of the editable dropdown.
+- **The Outstanding/Overdue/Paid stat boxes at the top of the list are
+  bucketed by currency, not summed across them** — an earlier version
+  added every invoice's raw `total_amount` together regardless of currency
+  and displayed the result under one arbitrary symbol (always `PHP`, since
+  that's `formatMoney`'s default when no currency is passed), so a
+  workspace billing even one client in USD would see that invoice's real
+  dollar amount mislabeled with a peso sign. Fixed to match how the
+  Reports page's Financial summary already handled this correctly: each
+  bucket is now a running total per currency, rendered as one line per
+  currency actually present. A workspace billing everyone in a single
+  currency (the common case) still sees exactly one line, unchanged.
 - **Every invoice must link to exactly one of a project or a task** — never
   both, never neither. A project-wide invoice covers everything under that
   project; a task-linked invoice is for one specific piece of work,

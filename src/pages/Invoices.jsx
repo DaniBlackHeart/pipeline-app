@@ -15,6 +15,27 @@ function deriveDisplayStatus(invoice) {
   return invoice.status
 }
 
+// Renders one line per currency present in the bucket, each formatted with
+// its own symbol -- not one combined figure. The common case (everything
+// billed in one currency) still renders as a single line exactly like
+// before; a workspace mixing currencies gets a short stack instead of one
+// wrong number under one arbitrary symbol.
+function MoneyStat({ byCurrency, color }) {
+  const entries = Object.entries(byCurrency)
+  if (entries.length === 0) {
+    return <p className="font-display font-bold text-lg mt-1" style={color ? { color } : undefined}>{formatMoney(0)}</p>
+  }
+  return (
+    <div className="mt-1 space-y-0.5">
+      {entries.map(([currency, amount]) => (
+        <p key={currency} className="font-display font-bold text-lg" style={color ? { color } : undefined}>
+          {formatMoney(amount, currency)}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 export default function Invoices() {
   const { activeOrgId, activeOrg } = useAuth()
   const isAdmin = activeOrg?.role === 'owner' || activeOrg?.role === 'admin'
@@ -137,15 +158,24 @@ export default function Invoices() {
     return deriveDisplayStatus(inv) === filter
   })
 
+  // Bucketed by currency, not summed across currencies -- invoices can be
+  // billed in different currencies (see the ClientPicker/InvoiceForm
+  // currency field), and adding raw totals together regardless of
+  // currency would produce a number that's mathematically meaningless,
+  // then get rendered with one arbitrary currency symbol. A workspace
+  // billing everyone in the same currency (the common case) still sees a
+  // single figure exactly as before; a mixed-currency one sees one line
+  // per currency instead of a wrong number.
   const totals = invoices.reduce(
     (acc, inv) => {
       const status = deriveDisplayStatus(inv)
-      if (status === 'paid') acc.paid += inv.total_amount
-      else if (status === 'overdue') acc.overdue += inv.total_amount
-      else if (status === 'sent') acc.outstanding += inv.total_amount
+      const bucket = status === 'paid' ? 'paid' : status === 'overdue' ? 'overdue' : status === 'sent' ? 'outstanding' : null
+      if (!bucket) return acc
+      const currency = inv.currency || 'PHP'
+      acc[bucket][currency] = (acc[bucket][currency] || 0) + inv.total_amount
       return acc
     },
-    { paid: 0, outstanding: 0, overdue: 0 }
+    { paid: {}, outstanding: {}, overdue: {} }
   )
 
   return (
@@ -177,15 +207,15 @@ export default function Invoices() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
           <p className="text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--ink-muted)' }}>Outstanding</p>
-          <p className="font-display font-bold text-lg mt-1">{formatMoney(totals.outstanding)}</p>
+          <MoneyStat byCurrency={totals.outstanding} />
         </div>
         <div className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
           <p className="text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--tally-alert)' }}>Overdue</p>
-          <p className="font-display font-bold text-lg mt-1" style={{ color: 'var(--tally-alert)' }}>{formatMoney(totals.overdue)}</p>
+          <MoneyStat byCurrency={totals.overdue} color="var(--tally-alert)" />
         </div>
         <div className="rounded-lg border p-4" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
           <p className="text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--tally-done)' }}>Paid</p>
-          <p className="font-display font-bold text-lg mt-1" style={{ color: 'var(--tally-done)' }}>{formatMoney(totals.paid)}</p>
+          <MoneyStat byCurrency={totals.paid} color="var(--tally-done)" />
         </div>
       </div>
 
