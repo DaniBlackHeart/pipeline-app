@@ -1203,6 +1203,10 @@ deployed, there's nothing new to add to Vercel here at all.
     one combined number under a single symbol. With everything in one
     currency, each box should look exactly as it always did — a single
     line.
+44. As the platform admin, go to **Admin → System health → Connections**
+    and confirm **Stripe connections** now appears alongside Google
+    Calendar and Wise, with the correct count for however many workspaces
+    currently have Stripe connected.
 
 ## Known limitations to know about
 

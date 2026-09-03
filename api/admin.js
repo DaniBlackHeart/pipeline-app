@@ -164,9 +164,10 @@ async function handleHealth(req, res) {
     }
   }
 
-  const [googleConnRes, wiseConnRes] = await Promise.all([
+  const [googleConnRes, wiseConnRes, stripeConnRes] = await Promise.all([
     admin.from('google_calendar_connections').select('id', { count: 'exact', head: true }),
     admin.from('wise_reconciliation_connections').select('id', { count: 'exact', head: true }),
+    admin.from('stripe_connections').select('id', { count: 'exact', head: true }),
   ])
 
   // Best-effort: recordErrorLog() (api/_authHelpers.js) is fire-and-forget,
@@ -187,6 +188,7 @@ async function handleHealth(req, res) {
     integrations: {
       googleCalendarConnections: googleConnRes.count ?? 0,
       wiseConnections: wiseConnRes.count ?? 0,
+      stripeConnections: stripeConnRes.count ?? 0,
     },
     recentErrors: recentErrorRows || [],
   })

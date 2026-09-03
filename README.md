@@ -2029,8 +2029,12 @@ well-formed, not that it's real.
     Pipeline. Real billing would need a payment processor decision
     (Stripe or similar) as its own separate feature.
   - **System health** — whether Google Calendar/email-digest/`CRON_SECRET`
-    are configured, the latest backup export's age, Google
-    Calendar/Wise connection counts, and a **recent server errors** list.
+    are configured, the latest backup export's age, Google Calendar/Wise/
+    Stripe connection counts (the Stripe count was missing from this list
+    until now — added later than the other two integrations and this page
+    just hadn't been updated to match — `api/admin.js`'s `handleHealth`
+    now also counts `stripe_connections`), and a **recent server errors**
+    list.
     That last one is genuinely lightweight, not a real tracker: server
     errors get a best-effort insert into a new `error_log` table
     (`schema_error_log.sql`, optional) alongside the existing

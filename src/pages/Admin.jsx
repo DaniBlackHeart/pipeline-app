@@ -262,6 +262,10 @@ function HealthTab({ health }) {
             <span className="text-sm">Wise connections</span>
             <span className="text-sm font-mono">{integrations.wiseConnections}</span>
           </li>
+          <li className="flex items-center justify-between rounded-lg border px-4 py-3" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+            <span className="text-sm">Stripe connections</span>
+            <span className="text-sm font-mono">{integrations.stripeConnections}</span>
+          </li>
         </ul>
       </div>
 
