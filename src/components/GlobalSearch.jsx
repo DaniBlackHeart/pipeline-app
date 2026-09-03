@@ -31,14 +31,14 @@ export default function GlobalSearch() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState({ tasks: [], clients: [], invoices: [] })
+  const [results, setResults] = useState({ projects: [], tasks: [], clients: [], invoices: [] })
   const inputRef = useRef(null)
   const panelRef = useRef(null)
 
   const close = useCallback(() => {
     setOpen(false)
     setQuery('')
-    setResults({ tasks: [], clients: [], invoices: [] })
+    setResults({ projects: [], tasks: [], clients: [], invoices: [] })
   }, [])
 
   // Ctrl/Cmd+K opens from anywhere in the app; Escape closes.
@@ -73,7 +73,7 @@ export default function GlobalSearch() {
     if (!open || !activeOrgId) return
     const trimmed = query.trim()
     if (trimmed.length < MIN_QUERY_LENGTH) {
-      setResults({ tasks: [], clients: [], invoices: [] })
+      setResults({ projects: [], tasks: [], clients: [], invoices: [] })
       setLoading(false)
       return
     }
@@ -86,12 +86,16 @@ export default function GlobalSearch() {
       // structural, so a client name like "Smith, Inc." would silently
       // break that filter. Plain .ilike() has no such parsing step.
       const [
+        { data: projectsByName },
+        { data: projectsByClient },
         { data: taskRows },
         { data: clientsByName },
         { data: clientsByCompany },
         { data: invoicesByNumber },
         { data: invoicesByClient },
       ] = await Promise.all([
+        supabase.from('projects').select('id, name, status, client_name').eq('org_id', activeOrgId).ilike('name', like).limit(RESULT_LIMIT),
+        supabase.from('projects').select('id, name, status, client_name').eq('org_id', activeOrgId).ilike('client_name', like).limit(RESULT_LIMIT),
         supabase
           .from('tasks')
           .select('id, title, status, project_id, projects ( name )')
@@ -115,6 +119,7 @@ export default function GlobalSearch() {
           .limit(RESULT_LIMIT),
       ])
       setResults({
+        projects: dedupeById([...(projectsByName || []), ...(projectsByClient || [])]).slice(0, RESULT_LIMIT),
         tasks: taskRows || [],
         clients: dedupeById([...(clientsByName || []), ...(clientsByCompany || [])]).slice(0, RESULT_LIMIT),
         invoices: dedupeById([...(invoicesByNumber || []), ...(invoicesByClient || [])]).slice(0, RESULT_LIMIT),
@@ -124,7 +129,7 @@ export default function GlobalSearch() {
     return () => clearTimeout(timer)
   }, [query, open, activeOrgId])
 
-  const totalResults = results.tasks.length + results.clients.length + results.invoices.length
+  const totalResults = results.projects.length + results.tasks.length + results.clients.length + results.invoices.length
 
   const goTo = (path) => {
     close()
@@ -133,9 +138,10 @@ export default function GlobalSearch() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const first = results.tasks[0] || results.clients[0] || results.invoices[0]
+    const first = results.projects[0] || results.tasks[0] || results.clients[0] || results.invoices[0]
     if (!first) return
-    if (results.tasks.includes(first)) goTo(`/tasks/${first.id}`)
+    if (results.projects.includes(first)) goTo(`/projects/${first.id}`)
+    else if (results.tasks.includes(first)) goTo(`/tasks/${first.id}`)
     else if (results.clients.includes(first)) goTo(`/clients/${first.id}`)
     else goTo(`/invoices/${first.id}`)
   }
@@ -146,7 +152,7 @@ export default function GlobalSearch() {
         onClick={() => setOpen(true)}
         className="text-sm px-2.5 py-1.5 rounded-md border hover-surface transition-colors flex items-center gap-1.5"
         style={{ borderColor: 'var(--border)', color: 'var(--ink-muted)' }}
-        aria-label="Search tasks, clients, and invoices"
+        aria-label="Search projects, tasks, clients, and invoices"
         title="Search (Ctrl/Cmd+K)"
       >
         <SearchIcon />
@@ -167,7 +173,7 @@ export default function GlobalSearch() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search tasks, clients, invoices…"
+                placeholder="Search projects, tasks, clients, invoices…"
                 className="flex-1 bg-transparent text-sm outline-none"
                 aria-label="Search"
               />
@@ -184,6 +190,18 @@ export default function GlobalSearch() {
                 <p className="text-sm px-3 py-4" style={{ color: 'var(--ink-muted)' }}>No matches for "{query.trim()}".</p>
               ) : (
                 <>
+                  {results.projects.length > 0 && (
+                    <ResultGroup label="Projects">
+                      {results.projects.map((p) => (
+                        <ResultRow key={p.id} onClick={() => goTo(`/projects/${p.id}`)}>
+                          <span className="truncate">{p.name}</span>
+                          <span className="text-xs flex-shrink-0" style={{ color: 'var(--ink-muted)' }}>
+                            {p.client_name || p.status}
+                          </span>
+                        </ResultRow>
+                      ))}
+                    </ResultGroup>
+                  )}
                   {results.tasks.length > 0 && (
                     <ResultGroup label="Tasks">
                       {results.tasks.map((t) => (

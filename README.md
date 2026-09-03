@@ -995,10 +995,10 @@ for "all of it."
 
 ## How global search works
 
-- **Jump straight to a task, client, or invoice by name/number instead of
-  navigating through list pages.** Didn't exist anywhere in the app
-  before this — previously the only way to find a specific record was to
-  open its list page and scroll/filter. `src/components/GlobalSearch.jsx`,
+- **Jump straight to a project, task, client, or invoice by name/number
+  instead of navigating through list pages.** Didn't exist anywhere in the
+  app before this — previously the only way to find a specific record was
+  to open its list page and scroll/filter. `src/components/GlobalSearch.jsx`,
   rendered from `AppShell`'s header on every page.
 - **Opens two ways**: the search button in the header (with a "Ctrl K"
   hint visible on wider screens), or the `Ctrl`/`Cmd`+K keyboard shortcut
@@ -1008,21 +1008,25 @@ for "all of it."
   every keystroke. While typing, the panel shows a "type at least 2
   characters" hint, then "Searching…", then grouped results or a
   no-matches message — never a blank flash.
-- **Searches three tables in parallel**: `tasks` (title), `clients` (name
-  and company), and `invoices` (invoice number and client name), each
-  explicitly scoped with `.eq('org_id', activeOrgId)` on top of what RLS
-  already enforces — defense in depth, and it also means a stale
-  `activeOrgId` can't leak another workspace's results even for a split
-  second while a query is in flight.
+- **Searches four tables in parallel**: `projects` (name and client name),
+  `tasks` (title), `clients` (name and company), and `invoices` (invoice
+  number and client name), each explicitly scoped with
+  `.eq('org_id', activeOrgId)` on top of what RLS already enforces —
+  defense in depth, and it also means a stale `activeOrgId` can't leak
+  another workspace's results even for a split second while a query is in
+  flight. Projects were left out of the original release (initial scope
+  was tasks/clients/invoices only) — a project search returning "no
+  matches" for a project that clearly existed surfaced the gap; added on
+  2026-09-03.
 - **Multi-column matches use two separate `.ilike()` queries merged
   client-side, not a hand-built `.or()` filter string.** PostgREST's
   `.or()` syntax treats commas and parentheses as structural, so a real
   client name like "Smith, Inc." would silently break a combined filter.
   Two plain `.ilike()` calls per table, deduped by `id` afterward, sidesteps
   that parsing problem entirely.
-- **Results are grouped by type (Tasks/Clients/Invoices), capped at 5 per
-  group.** Clicking a result — or pressing Enter to jump to the first
-  match found — navigates straight to that record's detail page and
+- **Results are grouped by type (Projects/Tasks/Clients/Invoices), capped
+  at 5 per group.** Clicking a result — or pressing Enter to jump to the
+  first match found — navigates straight to that record's detail page and
   closes the search panel.
 
 ## How bulk task actions work

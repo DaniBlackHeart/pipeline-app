@@ -1145,10 +1145,10 @@ deployed, there's nothing new to add to Vercel here at all.
     invoice, going back to the task shows both entries marked **(billed)**.
 36. Press **Ctrl/Cmd+K** from anywhere in the app (or click the search
     button in the header) — confirm the search panel opens and auto-focuses
-    the input. Type part of an existing task's title, a client's name, and
-    an invoice number — confirm each returns grouped results (Tasks/
-    Clients/Invoices) and that clicking one navigates straight to that
-    record. Press Escape and confirm it closes.
+    the input. Type part of an existing project's name, a task's title, a
+    client's name, and an invoice number — confirm each returns grouped
+    results (Projects/Tasks/Clients/Invoices) and that clicking one
+    navigates straight to that record. Press Escape and confirm it closes.
 37. Open a project with a few tasks and check two or three of their row
     checkboxes — confirm a bulk action bar appears above the list showing
     "N selected." Use it to set a status and a due date across all of
