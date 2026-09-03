@@ -137,25 +137,28 @@ export default function ClientDetail() {
       )}
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <label htmlFor="client-name" className="sr-only">Client name</label>
-          <input
-            id="client-name"
-            type="text"
-            defaultValue={client.name}
-            onBlur={(e) => {
-              const v = e.target.value.trim()
-              if (v && v !== client.name) updateField({ name: v })
-              else if (!v) setClient((prev) => ({ ...prev, name: client.name })) // don't allow blanking it out
-            }}
-            className="w-full font-display font-bold text-xl rounded-md border-none px-0 py-1 bg-transparent"
-          />
+        <div className="flex items-center justify-end mb-3">
           <button onClick={handleDelete} className="text-xs flex-shrink-0" style={{ color: 'var(--tally-alert)' }}>
             Delete client
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label htmlFor="client-name" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Client name</label>
+            <input
+              id="client-name"
+              type="text"
+              defaultValue={client.name}
+              onBlur={(e) => {
+                const v = e.target.value.trim()
+                if (v && v !== client.name) updateField({ name: v })
+                else if (!v) setClient((prev) => ({ ...prev, name: client.name })) // don't allow blanking it out
+              }}
+              className="w-full font-display font-bold rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--border)' }}
+            />
+          </div>
           <div>
             <label htmlFor="client-email" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Email</label>
             <input
@@ -168,6 +171,9 @@ export default function ClientDetail() {
               style={{ borderColor: 'var(--border)' }}
             />
           </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label htmlFor="client-company" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Company</label>
             <input
@@ -197,28 +203,82 @@ export default function ClientDetail() {
             )}
           </div>
         </div>
+
+        <div className="mb-4">
+          <label htmlFor="client-phone" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Phone number</label>
+          <input
+            id="client-phone"
+            type="tel"
+            defaultValue={client.phone || ''}
+            onBlur={(e) => updateField({ phone: e.target.value.trim() || null })}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="client-address" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Address</label>
+          <textarea
+            id="client-address"
+            defaultValue={client.address || ''}
+            onBlur={(e) => updateField({ address: e.target.value.trim() || null })}
+            rows={2}
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
       </div>
 
-      <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display font-bold text-lg mb-3">Projects</h2>
-        {projects.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No projects linked to this client yet.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {projects.map((p) => (
-              <li key={p.id}>
-                <Link
-                  to={`/projects/${p.id}`}
-                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 hover:shadow-sm transition-shadow"
-                  style={{ borderColor: 'var(--border)' }}
-                >
-                  <span className="text-sm min-w-0 truncate">{p.name}</span>
-                  <TallyDot status={p.status} showLabel={false} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="grid sm:grid-cols-2 gap-6 mb-6">
+        <div className="rounded-lg border p-5" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+          <h2 className="font-display font-bold text-lg mb-3">Projects</h2>
+          {projects.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No projects linked to this client yet.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {projects.map((p) => (
+                <li key={p.id}>
+                  <Link
+                    to={`/projects/${p.id}`}
+                    className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 hover:shadow-sm transition-shadow"
+                    style={{ borderColor: 'var(--border)' }}
+                  >
+                    <span className="text-sm min-w-0 truncate">{p.name}</span>
+                    <TallyDot status={p.status} showLabel={false} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border p-5" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
+          <h2 className="font-display font-bold text-lg mb-3">Invoices</h2>
+          {invoices.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No invoices linked to this client yet.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {invoices.map((inv) => {
+                const displayStatus = deriveInvoiceDisplayStatus(inv)
+                return (
+                  <li key={inv.id}>
+                    <Link
+                      to={`/invoices/${inv.id}`}
+                      className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 hover:shadow-sm transition-shadow"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <span className="text-sm min-w-0 truncate font-mono">{inv.invoice_number}</span>
+                      <span className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-medium">{formatMoney(inv.total_amount, inv.currency)}</span>
+                        <TallyDot status={displayStatus} />
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
@@ -242,34 +302,6 @@ export default function ClientDetail() {
                 </Link>
               </li>
             ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="rounded-lg border p-5 mb-6" style={{ background: 'var(--panel)', borderColor: 'var(--border)' }}>
-        <h2 className="font-display font-bold text-lg mb-3">Invoices</h2>
-        {invoices.length === 0 ? (
-          <p className="text-sm" style={{ color: 'var(--ink-muted)' }}>No invoices linked to this client yet.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {invoices.map((inv) => {
-              const displayStatus = deriveInvoiceDisplayStatus(inv)
-              return (
-                <li key={inv.id}>
-                  <Link
-                    to={`/invoices/${inv.id}`}
-                    className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 hover:shadow-sm transition-shadow"
-                    style={{ borderColor: 'var(--border)' }}
-                  >
-                    <span className="text-sm min-w-0 truncate font-mono">{inv.invoice_number}</span>
-                    <span className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-sm font-medium">{formatMoney(inv.total_amount, inv.currency)}</span>
-                      <TallyDot status={displayStatus} />
-                    </span>
-                  </Link>
-                </li>
-              )
-            })}
           </ul>
         )}
       </div>

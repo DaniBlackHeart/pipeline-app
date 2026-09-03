@@ -1202,6 +1202,33 @@ for "all of it."
   just wasn't exposed in this form's UI until now, so this was a matter of
   wiring the existing column up rather than a schema change.
 
+## How the client detail page layout works
+
+- **Redesigned to match the rest of the app's current card-based layout** —
+  the client info card at the top had been left in an older format (a plain
+  heading + a 3-column Email/Company/Website grid) since before several
+  other client-related features shipped, and had fallen out of step with
+  it. `src/pages/ClientDetail.jsx`.
+- **Two new columns on `clients`: `phone` and `address`** (`schema_client_
+  contact_info.sql`, both nullable — same reasoning as `email`: adding a
+  client shouldn't require knowing their full contact details up front).
+- **Client info card field order, top to bottom**: Client name paired with
+  Email, then Company paired with Website, then Phone number on its own
+  row, then Address (a short textarea, since an address is often more than
+  one line) on its own row at the bottom. All five fields save
+  independently on blur, same pattern as the existing Company/Website
+  fields.
+- **Projects and Invoices now sit side by side** in a two-column row
+  instead of two separate full-width sections — the two lists are usually
+  short enough that stacking them vertically wasted space. Tasks stays a
+  full-width section below them (it's typically the longest of the three
+  lists on a client with real project history).
+- **Section order overall**: client info card → Projects/Invoices side by
+  side → Tasks → Brand guidelines → Files → Activity. Files wasn't
+  mentioned when this reorder was requested; kept in its existing spot
+  between Brand guidelines and Activity rather than assuming it should be
+  dropped.
+
 ## How team management works
 
 - **The model this supports: one client, one workspace, one admin.** If
