@@ -1212,12 +1212,18 @@ for "all of it."
 - **Two new columns on `clients`: `phone` and `address`** (`schema_client_
   contact_info.sql`, both nullable — same reasoning as `email`: adding a
   client shouldn't require knowing their full contact details up front).
+- **A third new column, `company_email`** (`schema_client_company_email.sql`,
+  also nullable), distinct from the client's own personal `email`. Some
+  clients have a contact person's direct email plus a separate general/
+  company inbox, and the two shouldn't overwrite each other. This column
+  is display/reference only for now — invoice auto-fill still reads from
+  the personal `email` column, not this one.
 - **Client info card field order, top to bottom**: Client name paired with
-  Email, then Company paired with Website, then Phone number on its own
-  row, then Address (a short textarea, since an address is often more than
-  one line) on its own row at the bottom. All five fields save
-  independently on blur, same pattern as the existing Company/Website
-  fields.
+  (personal) Email, then Company email paired with Company and Website on
+  one row, then Phone number on its own row, then Address (a short
+  textarea, since an address is often more than one line) on its own row
+  at the bottom. All six fields save independently on blur, same pattern
+  as the original Company/Website fields.
 - **Projects and Invoices now sit side by side** in a two-column row
   instead of two separate full-width sections — the two lists are usually
   short enough that stacking them vertically wasted space. Tasks stays a

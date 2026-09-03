@@ -1187,14 +1187,16 @@ deployed, there's nothing new to add to Vercel here at all.
     manually trigger `api/daily-digest.js` (section 4) or wait for its
     scheduled run — confirm the invoice it generates has the client
     correctly linked (its detail page shows a **View client** link).
-42. First paste and run `supabase/schema_client_contact_info.sql` in the
-    Supabase SQL editor (adds `phone` and `address` to `clients`). Then
-    open any client's detail page and confirm the info card now shows
-    Client name paired with Email, Company paired with Website, then Phone
-    number and Address below that — fill in a phone number and an address,
-    reload the page, and confirm both saved. Confirm Projects and Invoices
-    now render side by side above Tasks, with Brand guidelines, Files, and
-    Activity still below in that order.
+42. First paste and run `supabase/schema_client_contact_info.sql` and
+    `supabase/schema_client_company_email.sql` in the Supabase SQL editor
+    (adds `phone`, `address`, and `company_email` to `clients`). Then open
+    any client's detail page and confirm the info card now shows Client
+    name paired with Email, then Company email paired with Company and
+    Website on one row, then Phone number and Address below that — fill in
+    a company email, phone number, and address, reload the page, and
+    confirm all three saved. Confirm Projects and Invoices render side by
+    side above Tasks, with Brand guidelines, Files, and Activity still
+    below in that order.
 
 ## Known limitations to know about
 

@@ -173,7 +173,19 @@ export default function ClientDetail() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label htmlFor="client-company-email" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Company email</label>
+            <input
+              id="client-company-email"
+              type="email"
+              defaultValue={client.company_email || ''}
+              onBlur={(e) => updateField({ company_email: e.target.value.trim() || null })}
+              placeholder="General/company inbox, if different"
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              style={{ borderColor: 'var(--border)' }}
+            />
+          </div>
           <div>
             <label htmlFor="client-company" className="block text-xs font-mono uppercase tracking-wide mb-1" style={{ color: 'var(--ink-muted)' }}>Company</label>
             <input
